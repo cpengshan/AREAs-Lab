@@ -1,2 +1,2 @@
-# AUTU
+# AUNU
 AI-Assisted User Needs Understanding

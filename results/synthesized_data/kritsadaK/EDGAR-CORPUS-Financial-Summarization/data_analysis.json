@@ -1,0 +1,30 @@
+{
+  "dataset_metadata": {
+    "domain": "Financial/Legal",
+    "total_instances": "Approx. 10,000 - 100,000",
+    "languages": ["en"],
+    "primary_data_type": "Monolingual Text (Summarization)",
+    "description": "A specialized financial summarization dataset extracted from SEC EDGAR filings (1993-2020). It leverages a hybrid AI synthesis strategy—using ChatGPT-3.5 Turbo (~70%) and Claude 3.5 (~30%)—to transform lengthy, unstructured 10-K financial reports into structured and concise technical summaries."
+  },
+  "schema_analysis": [
+    {
+      "column_name": "input",
+      "data_type": "string",
+      "description": "The raw or slightly cleaned textual content from specific sections of SEC 10-K filings (e.g., Management’s Discussion or Financial Statements).",
+      "is_text": true,
+      "avg_length": "1,000+ words"
+    },
+    {
+      "column_name": "summary",
+      "data_type": "string",
+      "description": "The AI-generated summary capturing key financial metrics like revenue recognition, assets, liabilities, and going concern evaluations.",
+      "is_text": true,
+      "avg_length": "200-300 words"
+    }
+  ],
+  "structural_logic": {
+    "relationships": "The 'input' column acts as the source document containing complex corporate disclosures, which is mapped to the 'summary' column as the ground-truth target for abstractive summarization tasks.",
+    "label_dynamics": "Not a classification dataset; however, the data distribution is balanced through model selection (Claude 3.5 Sonnet for long reports vs. Haiku for shorter ones) to ensure high-quality synthesis across various document lengths.",
+    "potential_bottlenecks": "Financial documents are notoriously dense with tables and numerical data; the extraction process may include noise or artifacts from HTML-to-text conversion of SEC filings."
+  }
+}

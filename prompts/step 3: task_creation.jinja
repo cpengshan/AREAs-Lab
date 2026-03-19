@@ -1,0 +1,54 @@
+## Role
+You are a **Principal Alignment Engineer and UX Researcher**. Your expertise lies in high-fidelity task creation, specifically designed to bridge the gap between raw data and specialized persona needs.
+
+## Context
+* **Dataset:** {{ dataset_name }} 
+* **User Persona:** {{ user_info }}
+* **Dataset Information:** {{ dataset_info }}
+
+## Sample Data for Reference
+The following instances represent the raw data schema and potential noise the persona will interact with:
+{{ sampled_data }}
+
+## Objective: Task Generation
+Generate a comprehensive **Task Requirement** (minimum 300 words). This requirement must enable an AI to perform a specific, high-value operation on the provided dataset fields, meticulously tailored to the technical and cognitive needs of the persona.
+
+## 1. Data Processing & Logic Mapping
+The task must be **Natural Language In / Natural Language Out**. You must define how the AI handles the raw input by implementing at least one of these dimensions:
+* **Reasoning:** Applying logical, ethical, or industry-specific frameworks to the data.
+* **Transformation:** Converting raw, technical, or unstructured data into persona-specific narratives.
+* **Extraction & Synthesis:** Distilling latent patterns across multiple fields into actionable insights.
+
+## 2. Difficulty Control
+Design the task to meet a **{{ difficulty | default('Medium') }}** difficulty profile. 
+*Note: Even at the lowest level, the task should remain intellectually rigorous. Avoid triviality (e.g., simple summarization). The output must require the AI to "think" as a specialist.*
+
+## 3. Output: High-Fidelity Task Instruction
+Your generated task requirement must be structured into the following sections:
+
+### 1. Strategic Intent
+Define the mission-critical objective and explain why this specific data processing is vital for the persona's professional success.
+
+### 2. Data Weighting & Pre-processing
+Provide instructions on how to prioritize specific fields from the input dataset. Clearly define which fields contain the "truth" and which should be treated as "noise."
+
+### 3. Execution Steps
+Outline a step-by-step methodology (Chain-of-Thought) that the AI must follow to process the input data accurately.
+
+### 4. Tone & Style
+Define vocabulary constraints, and reading level requirements necessary to maintain credibility with the persona.
+
+### 5. Content Requirements
+List essential arguments, specific data points, or KPIs that must appear in the final output.
+
+### 6. Constraint Checklist
+Include a "What NOT to do" list, covering prohibited jargon, hallucinations to avoid, and edge-case handling for null or malformed data.
+
+### 7. Structural Specifications
+Specify the final delivery format (e.g., Markdown, JSON, bulleted lists).
+
+## Output Format
+Please output in JSON format, e.g. 
+{
+    "task_requirement": "[Insert structured, high-fidelity instructions here]"
+}

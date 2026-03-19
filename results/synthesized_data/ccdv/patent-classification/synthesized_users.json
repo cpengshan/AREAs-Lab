@@ -1,0 +1,218 @@
+[
+  {
+    "persona_id": 1,
+    "role": "Intellectual Property Strategist",
+    "competency_matrix": {
+      "proficiencies": [
+        "Patent landscape analysis",
+        "Market differentiation",
+        "Portfolio valuation"
+      ],
+      "limitations": [
+        "Deep technical engineering specs",
+        "Boolean search syntax"
+      ]
+    },
+    "business_motivation": "Competitive Edge: Identifying 'white space' in the patent landscape to guide R&D investment.",
+    "workflow_friction": "Abstracts are often written to be intentionally broad or vague, making it hard to pinpoint the true 'novelty' without comparative analysis.",
+    "potential_tasks": [
+      {
+        "task_name": "Innovation Gap Analysis",
+        "description": "Analyze abstracts across a specific CPC label to generate a summary of 'saturated' technical claims versus emerging trends."
+      },
+      {
+        "task_name": "Cross-Domain Analogy Generation",
+        "description": "Translate highly specialized Physics (Label 6) abstracts into layperson business terms to evaluate cross-industry licensing potential."
+      }
+    ]
+  },
+  {
+    "persona_id": 2,
+    "role": "Patent Quality Auditor",
+    "competency_matrix": {
+      "proficiencies": [
+        "Regulatory compliance",
+        "CPC classification standards",
+        "Error pattern recognition"
+      ],
+      "limitations": [
+        "Machine learning model architecture",
+        "Real-time data streaming"
+      ]
+    },
+    "business_motivation": "Factual Precision: Minimizing the 'Misclassification Rate' that leads to costly legal challenges during the examination phase.",
+    "workflow_friction": "The dataset contains shorthand and jargon that may lead to 'label drift' where the abstract content technically straddles two CPC sections.",
+    "potential_tasks": [
+      {
+        "task_name": "Label Congruency Audit",
+        "description": "Critically evaluate if the technical summary in the 'text' field logically justifies the assigned CPC section code."
+      },
+      {
+        "task_name": "Boundary Case Identification",
+        "description": "Identify abstracts that contain keywords from multiple domains (e.g., Medical + Electricity) and propose a primary vs. secondary classification rationale."
+      }
+    ]
+  },
+  {
+    "persona_id": 3,
+    "role": "Technical Licensing Officer",
+    "competency_matrix": {
+      "proficiencies": [
+        "Contract negotiation",
+        "Technology transfer",
+        "Relationship management"
+      ],
+      "limitations": [
+        "Natural Language Processing theory",
+        "Coding and script execution"
+      ]
+    },
+    "business_motivation": "Revenue Generation: Maximizing the speed and volume of successful technology transfers to commercial partners.",
+    "workflow_friction": "Extracting 'use-case' scenarios from abstract text that is formatted for legal protection rather than commercial appeal.",
+    "potential_tasks": [
+      {
+        "task_name": "Automated Benefit Extraction",
+        "description": "Transform technical abstracts into bulleted lists of 'Commercial Advantages' and 'Problem-Solution' pairs."
+      },
+      {
+        "task_name": "Domain-Specific Hallucination Check",
+        "description": "Verify that AI-generated summaries of complex 'Human Necessities' (Label 0) patents do not invent functional capabilities not present in the text."
+      }
+    ]
+  },
+  {
+    "persona_id": 4,
+    "role": "Junior Patent Examiner",
+    "competency_matrix": {
+      "proficiencies": [
+        "Prior art search",
+        "Technical reading comprehension",
+        "Legal framework"
+      ],
+      "limitations": [
+        "Historical context of legacy patents",
+        "High-volume workload management"
+      ]
+    },
+    "business_motivation": "Efficiency: Reducing the 'Time-per-Disposal' metric while maintaining high examination rigor.",
+    "workflow_friction": "Dense, repetitive sentence structures in abstracts make manual feature extraction exhausting and prone to human error.",
+    "potential_tasks": [
+      {
+        "task_name": "Key Claim Distillation",
+        "description": "Extract the primary independent claim elements from the abstract to facilitate faster prior-art matching."
+      },
+      {
+        "task_name": "Contextual Disambiguation",
+        "description": "Resolve ambiguous acronyms and technical terms within the abstract based on the specific CPC section context (e.g., 'Cell' in Biology vs. Electricity)."
+      }
+    ]
+  },
+  {
+    "persona_id": 5,
+    "role": "Product Marketing Manager (Deep Tech)",
+    "competency_matrix": {
+      "proficiencies": [
+        "Value proposition design",
+        "Competitive intelligence",
+        "Content strategy"
+      ],
+      "limitations": [
+        "Legal terminology",
+        "Statistical validation methods"
+      ]
+    },
+    "business_motivation": "Market Awareness: Ensuring the product roadmap accounts for competitors' newly patented technical capabilities.",
+    "workflow_friction": "Abstracts focus on 'how' it works (technical) whereas the persona needs to know 'what' it solves (market-facing).",
+    "potential_tasks": [
+      {
+        "task_name": "Feature-to-Benefit Mapping",
+        "description": "Re-write patent abstracts into a 'Product Release Note' format for internal stakeholder briefing."
+      },
+      {
+        "task_name": "Adversarial Patent Simulation",
+        "description": "Given a set of competitor abstracts, identify potential 'design-around' strategies to avoid infringement without requiring legal counsel."
+      }
+    ]
+  },
+  {
+    "persona_id": 6,
+    "role": "Compliance & Ethics Lead",
+    "competency_matrix": {
+      "proficiencies": [
+        "Risk mitigation",
+        "Algorithmic fairness",
+        "Policy drafting"
+      ],
+      "limitations": [
+        "Hardware engineering",
+        "Software development"
+      ]
+    },
+    "business_motivation": "Transparency: Ensuring that AI models trained on patent data are auditable and do not exhibit systematic bias against certain technical sections.",
+    "workflow_friction": "The lack of demographic or metadata context in the raw dataset makes it difficult to assess 'inventor diversity' or 'geographic bias'.",
+    "potential_tasks": [
+      {
+        "task_name": "Bias Sensitivity Screening",
+        "description": "Review model outputs for specific CPC sections to ensure technical summaries do not introduce gendered or exclusionary language."
+      },
+      {
+        "task_name": "Explainability Logic Mapping",
+        "description": "Create a 'Rationale Document' that explains why specific technical keywords in an abstract triggered a high-confidence classification."
+      }
+    ]
+  },
+  {
+    "persona_id": 7,
+    "role": "R&D Knowledge Manager",
+    "competency_matrix": {
+      "proficiencies": [
+        "Information architecture",
+        "Taxonomy management",
+        "Internal search optimization"
+      ],
+      "limitations": [
+        "Advanced mathematics",
+        "Neural network fine-tuning"
+      ]
+    },
+    "business_motivation": "Knowledge Retrieval: Ensuring that 52,000+ records are discoverable by internal scientists via intuitive search.",
+    "workflow_friction": "The CPC labels are too broad (only 9 categories) for nuanced internal search; users need more granular 'tags'.",
+    "potential_tasks": [
+      {
+        "task_name": "Sub-Section Tagging",
+        "description": "Automatically generate 3-5 granular 'micro-tags' for each abstract that go beyond the 9 high-level CPC sections."
+      },
+      {
+        "task_name": "Style-Transfer for Engineers",
+        "description": "Convert abstracts written in 'Patent-ese' into standard scientific abstract formats to improve internal database readability."
+      }
+    ]
+  },
+  {
+    "persona_id": 8,
+    "role": "AI Operations Coordinator",
+    "competency_matrix": {
+      "proficiencies": [
+        "Workflow orchestration",
+        "SaaS tool management",
+        "Quality assurance"
+      ],
+      "limitations": [
+        "Writing code",
+        "Domain-specific legal expertise"
+      ]
+    },
+    "business_motivation": "Cost-Effectiveness: Optimizing the use of LLMs for patent processing by balancing performance and token expenditure.",
+    "workflow_friction": "Longer abstracts increase token costs significantly; there is a need to determine the 'minimum viable text' for accurate processing.",
+    "potential_tasks": [
+      {
+        "task_name": "Token-Efficient Summarization",
+        "description": "Determine if a highly compressed version of the abstract (under 50 tokens) retains enough technical density for correct classification."
+      },
+      {
+        "task_name": "Hallucination Stress-Test",
+        "description": "Systematically compare AI summaries of 'Electricity' (Label 7) patents against the raw text to identify common technical 'hallucination' patterns."
+      }
+    ]
+  }
+]

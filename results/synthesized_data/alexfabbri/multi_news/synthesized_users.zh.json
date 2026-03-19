@@ -1,0 +1,220 @@
+[
+  {
+    "persona_id": 1,
+    "role": "首席编辑战略官",
+    "competency_matrix": {
+      "proficiencies": [
+        "叙事综合能力",
+        "编辑风格一致性",
+        "高层内容规划"
+      ],
+      "limitations": [
+        "非技术背景",
+        "不懂向量嵌入",
+        "零编程能力"
+      ]
+    },
+    "business_motivation": "通过高质量、平衡且多维度的报道，维护品牌权威性和读者留存率。",
+    "workflow_friction": "如何将“document”列中分散的源文章综合成统一的声音，同时又不丢失少数源文本中的关键细节。",
+    "potential_tasks": [
+      {
+        "task_name": "多源叙事综合",
+        "description": "通过无代码 LLM 界面生成一篇 250 字的摘要，将由“|||||”分隔的各篇文章中相互冲突的事实协调为一篇连贯的编辑文章。"
+      },
+      {
+        "task_name": "针对不同受众的风格迁移",
+        "description": "将“summary”标准答案改写为适合小学五年级阅读水平的版本，以提高可访问性，同时保留原始 8:1 压缩比下的事实密度。"
+      }
+    ]
+  },
+  {
+    "persona_id": 2,
+    "role": "危机管理负责人",
+    "competency_matrix": {
+      "proficiencies": [
+        "快速信息分选",
+        "风险评估",
+        "利益相关者沟通"
+      ],
+      "limitations": [
+        "时间紧迫",
+        "仅需“底线”结果",
+        "依赖基于 UI 的仪表盘"
+      ]
+    },
+    "business_motivation": "在突发新闻周期中最大限度地降低响应延迟，确保公共安全信息的准确性。",
+    "workflow_friction": "“document”字段（平均 2103 字）对于活跃危机期间的人工审查来说过于密集；需要立即提取可操作的事实。",
+    "potential_tasks": [
+      {
+        "task_name": "零样本事实提取",
+        "description": "提示模型跨所有源文章提取特定实体（姓名、地点、日期），以构建实时事件时间线。"
+      },
+      {
+        "task_name": "冲突情报解析",
+        "description": "识别并标记由“|||||”分隔的源文章之间的矛盾陈述，防止在摘要中传播错误信息。"
+      }
+    ]
+  },
+  {
+    "persona_id": 3,
+    "role": "AI 治理与伦理官员",
+    "competency_matrix": {
+      "proficiencies": [
+        "监管合规",
+        "偏见检测",
+        "审计追踪记录"
+      ],
+      "limitations": [
+        "对模型架构了解有限",
+        "关注输出安全性胜过模型性能"
+      ]
+    },
+    "business_motivation": "确保“summary”输出不会引入“document”源文本中不存在的幻觉或政治偏见。",
+    "workflow_friction": "高压缩比（8:1）增加了“事实模糊”的风险——即模型可能将不同的事实混合成一个虚假的第三方叙事。",
+    "potential_tasks": [
+      {
+        "task_name": "幻觉审计",
+        "description": "使用“搜索并验证”UI 工具将“summary”字段与“document”字段进行比对，确保摘要中的每个主张在源文本中都有据可查。"
+      },
+      {
+        "task_name": "源文本代表性映射",
+        "description": "评估摘要是否过度偏向“|||||”链中的第一篇文章，确保所有源文档在摘要中得到公平呈现。"
+      }
+    ]
+  },
+  {
+    "persona_id": 4,
+    "role": "媒体分析师与事实核查员",
+    "competency_matrix": {
+      "proficiencies": [
+        "交叉引用",
+        "信息核实",
+        "深度研究"
+      ],
+      "limitations": [
+        "因人工核实导致工作流较慢",
+        "不熟悉 NLP 分词（tokenization）限制"
+      ]
+    },
+    "business_motivation": "追求极高的事实精准度；对综合输出中的错误零容忍。",
+    "workflow_friction": "“document”字段中的各篇文章经常出现截断或重复，导致难以确定哪篇才是“原始”记录。",
+    "potential_tasks": [
+      {
+        "task_name": "源归因标记",
+        "description": "通过标注 UI 手动标注“summary”文本，将特定句子链接回“document”块中对应的特定源文章。"
+      },
+      {
+        "task_name": "长上下文窗口验证",
+        "description": "使用具有 32k+ token 窗口的聊天界面，验证“summary”是否遗漏了位于 5000 字“document”字符串末尾的关键数据点。"
+      }
+    ]
+  },
+  {
+    "persona_id": 5,
+    "role": "产品经理（新闻聚合应用）",
+    "competency_matrix": {
+      "proficiencies": [
+        "市场契合度分析",
+        "用户体验设计",
+        "成本效益分析"
+      ],
+      "limitations": [
+        "不写代码",
+        "需平衡质量与 API token 成本"
+      ]
+    },
+    "business_motivation": "在保持用户愿意付费的“summary”质量的同时，优化 token 使用量（延迟/成本）。",
+    "workflow_friction": "“document”平均长度超过 2000 字，使得每次 API 调用成本高昂；需要找到生成高质量摘要的“最小可行上下文”。",
+    "potential_tasks": [
+      {
+        "task_name": "Token 效率基准测试",
+        "description": "使用提示工程游乐场（Playground）测试仅从“document”前 500 字生成的摘要质量是否与全文摘要相匹配。"
+      },
+      {
+        "task_name": "个性化摘要格式化",
+        "description": "为移动端 UI 设计“TL;DR”要点模板，将长篇大论的“summary”转换为可快速浏览的列表。"
+      }
+    ]
+  },
+  {
+    "persona_id": 6,
+    "role": "内容运营经理",
+    "competency_matrix": {
+      "proficiencies": [
+        "工作流自动化",
+        "质量保证 (QA)",
+        "资源分配"
+      ],
+      "limitations": [
+        "依赖预建的内部工具",
+        "偏重管理角色"
+      ]
+    },
+    "business_motivation": "在不增加人力成本的情况下，扩大每日生成的摘要数量。",
+    "workflow_friction": "在向内容管理系统（CMS）批量上传时处理“|||||”分隔符，这些平台常会误读特殊字符。",
+    "potential_tasks": [
+      {
+        "task_name": "自动 QA 评分",
+        "description": "使用“LLM 作为评审员”UI，根据“document”输入对“summary”列的“简洁度”和“清晰度”进行 1-10 分的评分。"
+      },
+      {
+        "task_name": "基于模板的元数据生成",
+        "description": "根据“summary”列生成 SEO 关键词和社交媒体标题，以简化发布流水线。"
+      }
+    ]
+  },
+  {
+    "persona_id": 7,
+    "role": "企业图书馆员/档案保管员",
+    "competency_matrix": {
+      "proficiencies": [
+        "分类学管理",
+        "归档分类",
+        "元数据标准"
+      ],
+      "limitations": [
+        "极其严谨但非技术背景",
+        "回避“黑箱”AI 解决方案"
+      ]
+    },
+    "business_motivation": "确保“document”档案可搜索且分类妥当，以便进行历史追溯。",
+    "workflow_friction": "“document”字段是一堵“文字墙”；它缺乏诸如类别、子主题或情感之类的结构化元数据。",
+    "potential_tasks": [
+      {
+        "task_name": "层级化主题标注",
+        "description": "使用 AI 辅助分类 UI 审查并为“document”集群分配标准化的图书馆代码（如杜威分类法或自定义新闻标签）。"
+      },
+      {
+        "task_name": "重复项检测审计",
+        "description": "识别包含基本相同文章但顺序不同的“document”条目，以清理数据集供长期存储。"
+      }
+    ]
+  },
+  {
+    "persona_id": 8,
+    "role": "法律取证专家",
+    "competency_matrix": {
+      "proficiencies": [
+        "证据识别",
+        "隐私合规",
+        "监管链"
+      ],
+      "limitations": [
+        "专注于法律风险",
+        "仅接受“可解释”的 AI"
+      ]
+    },
+    "business_motivation": "识别新闻源中的 PII（个人身份信息）或法律敏感主张，以避免诉讼。",
+    "workflow_friction": "“document”字段可能包含泄露文件或敏感姓名，这些内容不应包含在面向公众的“summary”中。",
+    "potential_tasks": [
+      {
+        "task_name": "脱敏验证",
+        "description": "使用敏感词掩码 UI，确保“document”文章中提到的姓名在“summary”中被适当泛化（例如改为“当地官员”）。"
+      },
+      {
+        "task_name": "归属逻辑审计",
+        "description": "检查“summary”以确保源文章中提到的“指控（allegations）”被描述为“主张（claims）”而非“事实（facts）”，以防范诽谤风险。"
+      }
+    ]
+  }
+]

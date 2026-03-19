@@ -16,9 +16,12 @@ dataset_names = [
     'starmpcc/Asclepius-Synthetic-Clinical-Notes'
 ]
 
-dir_prompt = "prompts/"
+dir_prompt_template = "prompts/"
 fname_prompt_template = "step 1: data_analysis.jinja"
 
-env = Environment(loader=FileSystemLoader(dir_prompt))
+env = Environment(loader=FileSystemLoader(dir_prompt_template))
 prompt_template = env.get_template(fname_prompt_template)
 
+dataset_name = 'alexfabbri/multi_news'
+prompt = prompt_template.render(dataset_name=dataset_name)
+print(prompt)

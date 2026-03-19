@@ -5,15 +5,15 @@ import pandas as pd
 
 data_dir = "data/data_raw"
 dataset_names = [
-    # "ccdv/govreport-summarization", 
-    # "ccdv/pubmed-summarization", 
-    # "ccdv/arxiv-summarization", 
-    # "ccdv/patent-classification", 
-    # "rohitsaxena/MovieSum", 
-    # "thu-coai/esconv", 
-    # "alexfabbri/multi_news",  # download directly
-    # "kritsadaK/EDGAR-CORPUS-Financial-Summarization",    # Only train
-    # "santoshtyss/uk_legislation", 
+    "ccdv/govreport-summarization", 
+    "ccdv/pubmed-summarization", 
+    "ccdv/arxiv-summarization", 
+    "ccdv/patent-classification", 
+    "rohitsaxena/MovieSum", 
+    "thu-coai/esconv", 
+    "alexfabbri/multi_news", 
+    "kritsadaK/EDGAR-CORPUS-Financial-Summarization", 
+    "santoshtyss/uk_legislation", 
 ]
 
 def download_dataset(dataset_name, split="test"):

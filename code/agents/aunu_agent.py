@@ -1,6 +1,9 @@
 import pandas as pd
 from agent_basic import InteractionState
+import logging
+import json
 
+logger = logging.getLogger(__name__)
 
 class AUNUAgent:
     def __init__(self, strategy, user_instruction_init, data_path):
@@ -29,7 +32,9 @@ class AUNUAgent:
         """
         messages = state["messages"]
         experiment_results = "Some experiment results"  # TODO
-        messages.append({"role": "experiment_result", "content": experiment_results})
+        message = {"role": "experiment_result", "content": experiment_results}
+        logger.info({json.dumps(message)})
+        messages.append(message)
         return messages
     
     def user_interaction(self, state: InteractionState):
@@ -38,7 +43,9 @@ class AUNUAgent:
         """
         messages = state["messages"]
         agent_question = "Tell me more" # TODO
-        messages.append({"role": "aunu_agent", "content": agent_question})
+        message = {"role": "aunu_agent_question", "content": agent_question}
+        logger.info({json.dumps(message)})
+        messages.append(message)
         return messages
     
     def revise_task_requirement(self, state: InteractionState):
@@ -49,6 +56,10 @@ class AUNUAgent:
         task_requirement_revised = None
         # TODO
         self.task_requirement_curr = task_requirement_revised
+        message = {"role": "task_requirement_update", "content": task_requirement_revised}
+        logger.info({json.dumps(message)})
+        messages.append(message)
+        return messages
 
 
     def process(self, state: InteractionState):

@@ -1,16 +1,38 @@
+import logging
+import argparse
 from interactive_manager import create_workflow
 
+
+
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Args Parser for AUNU similation")
+    parser.add_argument("logging_path", help="Path to store the log file")
+    # TODO add other args if necessary
+    args = parser.parse_args()
+    return args
+
 def run_simulation():
+
+    # --- Logging Configuration ---
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
+
+
     app = create_workflow()
-    
     # Initial State
     initial_state = {
         "messages": [{"role": "user_feedback", "content": "I need a sales analysis."}],
-        "specification": "",
-        "is_satisfied": False,
-        "strategy": "active_elicitation",
-        "ground_truth": "I want to see Q4 sales for the electronics category.",
-        "iteration_count": 0
+        "is_complete": False,
+        "aunu_strategy": "user_interaction",
     }
 
     print("🚀 Starting AU-NU Simulation...")

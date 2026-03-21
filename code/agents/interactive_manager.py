@@ -2,6 +2,10 @@ from langgraph.graph import StateGraph, END
 from agent_basic import InteractionState
 from aunu_agent import AUNUAgent
 from mimic_user import MimicUser
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def create_workflow():
     # Initialize agents
@@ -20,7 +24,7 @@ def create_workflow():
 
     # Routing logic
     def router(state: InteractionState):
-        if state["is_satisfied"] or state["iteration_count"] > 5:
+        if state["is_ccomplete"]:
             return "end"
         return "continue"
 

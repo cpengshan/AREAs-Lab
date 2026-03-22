@@ -4,28 +4,26 @@ from interactive_manager import create_workflow
 
 
 
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Args Parser for AUNU similation")
-    parser.add_argument("logging_path", help="Path to store the log file")
+    parser.add_argument("log_file_path", type=str, help="Path to store the log file")
+    parser.add_argument("strategy", type=str, help="AUNU strategy")
     # TODO add other args if necessary
     args = parser.parse_args()
     return args
 
 def run_simulation():
+    args = parse_args()
 
     # --- Logging Configuration ---
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(),
+            logging.FileHandler(args.log_file_path),
             logging.StreamHandler()
         ]
     )
-    logger = logging.getLogger(__name__)
-
 
     app = create_workflow()
     # Initial State

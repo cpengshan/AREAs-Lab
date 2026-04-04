@@ -4,7 +4,7 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
 dir_data_analysis = "results/synthesized_data"
-dir_prompt_template = "prompts/"
+dir_prompt_template = "prompts/data_process/"
 dir_data = "data/data_processed"
 fname_prompt_template = "step 3: task_creation.jinja"
 NUM_USERS = 8

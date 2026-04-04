@@ -3,7 +3,6 @@ import argparse
 from interactive_manager import create_workflow
 
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Args Parser for AUNU similation")
     parser.add_argument("log_file_path", type=str, help="Path to store the log file")
@@ -25,7 +24,7 @@ def run_simulation():
         ]
     )
 
-    app = create_workflow()
+    app = create_workflow(args)
     # Initial State
     initial_state = {
         "messages": [{"role": "user_feedback", "content": "I need a sales analysis."}],

@@ -2,32 +2,38 @@ import pandas as pd
 from agent_basic import InteractionState
 import logging
 import json
+from datetime import datetime, timezone
+import os
+from jinja2 import Environment, FileSystemLoader
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from model.model_base import LLM
 
 logger = logging.getLogger(__name__)
 
+PROMPT_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "../../prompts/agents/AUNU")
+
 class AUNUAgent:
-<<<<<<< HEAD:code/agents/aunu_agent.py
-    def __init__(self, strategy, user_instruction_init, data_path): 
-        self.strategy = strategy
-        self.dataset = self.load_dataset(data_path)
-        self.task_requirement_curr = self.create_task_requirement(user_instruction_init)
-=======
     def __init__(self, args):
         self.strategy = args.strategy
-        self.dataset = self.load_dataset(args.data_path)
-        self.task_requirement_curr = self.create_task_requirement(args.user_instruction_init)
+        self.model_name = args.aunu_model
+        self.llm = LLM(self.model_name)
+        self.env = Environment(loader=FileSystemLoader(PROMPT_TEMPLATE_DIR))
+        if self.strategy != "zero_shot":
+            self.dataset = self.load_dataset(args.dataset)
+        self.task_requirement_curr = args.user_instruction_init if hasattr(args, "user_instruction_init") else ""
         self.role = "aunu_agent"
->>>>>>> data_synthesis:scripts/agents/aunu_agent.py
     
-    def load_dataset(self, data_path):
+    def load_dataset(self, dataset: str):
         """
-        Load the dataset csv file
+        Load the dataset CSV file from data/data_processed/<dataset>/data.csv
         """
+        data_path = os.path.join(os.path.dirname(__file__), "../../data/data_processed", dataset, "data.csv")
         try:
             df = pd.read_csv(data_path)
             return df
-        except:
-            logger.info("Data loading failed")
+        except Exception as e:
+            logger.info(f"Data loading failed for dataset '{dataset}': {e}")
 
     def create_task_requirement_init(self, user_instruction_init):
         """
@@ -59,7 +65,7 @@ class AUNUAgent:
         messages.append(message)
         return messages
     
-    def reflectiion(self, state: InteractionState):
+    def reflection(self, state: InteractionState):
         """
         Check human and/or data interaction results, figure out what in the current task_requirement should be revised.
         """
@@ -91,11 +97,31 @@ class AUNUAgent:
         messages = state["messages"]
         # --- PSEUDO-CODE FOR STRATEGIES ---
         if self.strategy == "zero_shot":
-            # TODO: 
-            
+            template = self.env.get_template("zeroshot.jinja")
+            prompt = template.render(user_instruction=self.task_requirement_curr)
+
+            start_time = datetime.now(timezone.utc).isoformat()
+            response = self.llm.generate(prompt)
+            end_time = datetime.now(timezone.utc).isoformat()
+
+            self.task_requirement_curr = response
+
+            message = {
+                "start_time": start_time,
+                "end_time": end_time,
+                "role": self.role,
+                "action": "zero_shot",
+                "input": prompt,
+                "output": response,
+                "llm": self.model_name,
+            }
+            logger.info(json.dumps(message))
+            messages.append(message)
+
             return {
                 "messages": messages,
-                "task_requirement_final": self.task_requirement_curr
+                "is_complete": True,
+                "task_requirement_final": self.task_requirement_curr,
             }
         elif self.strategy == "user_interaction":
             # TODO: 

@@ -6,7 +6,7 @@ import json
 logger = logging.getLogger(__name__)
 
 class AUNUAgent:
-    def __init__(self, strategy, user_instruction_init, data_path):
+    def __init__(self, strategy, user_instruction_init, data_path): 
         self.strategy = strategy
         self.dataset = self.load_dataset(data_path)
         self.task_requirement_curr = self.create_task_requirement(user_instruction_init)
@@ -70,6 +70,7 @@ class AUNUAgent:
         # --- PSEUDO-CODE FOR STRATEGIES ---
         if self.strategy == "zero_shot":
             # TODO: 
+            
             return {
                 "messages": messages,
                 "task_requirement_final": self.task_requirement_curr

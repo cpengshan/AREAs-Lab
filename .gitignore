@@ -214,3 +214,4 @@ CLAUDE.md
 uv.lock
 .python-version
 pyproject.toml
+scratch.ipynb

@@ -3,34 +3,38 @@ from agent_basic import InteractionState
 from aunu_agent import AUNUAgent
 from mimic_user import MimicUser
 
+MIMIC_STRATEGIES = {"user", "mix"}
+
 
 def create_workflow(args):
-    # Initialize agents
+    strategy = args.strategy
     aunu = AUNUAgent(args)
-    user = MimicUser(args)
 
-    # Define the graph
     workflow = StateGraph(InteractionState)
-
-    # Add nodes
     workflow.add_node("aunu_agent", aunu.process)
-    workflow.add_node("mimic_user", user.respond)
 
-    # Entry point
-    workflow.set_entry_point("mimic_user")
-
-    # Routing logic
     def router(state: InteractionState):
-        if state["is_ccomplete"]:
-            return "end"
-        return "continue"
+        return "end" if state["is_complete"] else "continue"
 
-    # Add edges
-    workflow.add_conditional_edges(
-        "aunu_agent",
-        router,
-        {"continue": "mimic_user", "end": END}
-    )
-    workflow.add_edge("mimic_user", "aunu_agent")
+    if strategy in MIMIC_STRATEGIES:
+        # aunu_agent <-> mimic_user loop
+        mimic = MimicUser(args)
+        workflow.add_node("mimic_user", mimic.respond)
+
+        workflow.set_entry_point("mimic_user")
+        workflow.add_edge("mimic_user", "aunu_agent")
+        workflow.add_conditional_edges(
+            "aunu_agent",
+            router,
+            {"continue": "mimic_user", "end": END},
+        )
+    else:
+        # zero_shot / data: aunu_agent runs once then ends
+        workflow.set_entry_point("aunu_agent")
+        workflow.add_conditional_edges(
+            "aunu_agent",
+            router,
+            {"continue": "aunu_agent", "end": END},
+        )
 
     return workflow.compile()

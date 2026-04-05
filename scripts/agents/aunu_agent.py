@@ -6,11 +6,18 @@ import json
 logger = logging.getLogger(__name__)
 
 class AUNUAgent:
+<<<<<<< HEAD:code/agents/aunu_agent.py
+    def __init__(self, strategy, user_instruction_init, data_path): 
+        self.strategy = strategy
+        self.dataset = self.load_dataset(data_path)
+        self.task_requirement_curr = self.create_task_requirement(user_instruction_init)
+=======
     def __init__(self, args):
         self.strategy = args.strategy
         self.dataset = self.load_dataset(args.data_path)
         self.task_requirement_curr = self.create_task_requirement(args.user_instruction_init)
         self.role = "aunu_agent"
+>>>>>>> data_synthesis:scripts/agents/aunu_agent.py
     
     def load_dataset(self, data_path):
         """
@@ -85,6 +92,7 @@ class AUNUAgent:
         # --- PSEUDO-CODE FOR STRATEGIES ---
         if self.strategy == "zero_shot":
             # TODO: 
+            
             return {
                 "messages": messages,
                 "task_requirement_final": self.task_requirement_curr

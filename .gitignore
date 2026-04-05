@@ -206,6 +206,17 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+<<<<<<< HEAD
+# Raw data
+data/data_raw/
+
+# Project-specific
+CLAUDE.md
+uv.lock
+.python-version
+pyproject.toml
+scratch.ipynb
+=======
 # 
 .gitignore
 data/
@@ -213,3 +224,4 @@ run.py
 scratchs/
 .vscode/
 private/
+>>>>>>> data_synthesis

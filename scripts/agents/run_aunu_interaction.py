@@ -36,7 +36,7 @@ def load_ground_truth(dataset: str, persona_id: int) -> str:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Args Parser for AUNU simulation")
-    parser.add_argument("--log_file_path", type=str, default="/local/scratch/zzh2365/AUNU/scripts/loggings/zero_shot/persona.log", help="Path to store the log file")
+    parser.add_argument("--log_file_path", type=str, default=os.path.join(os.path.dirname(__file__), "../loggings/zero_shot/run.log"), help="Path to store the log file")
     parser.add_argument(
         "--strategy",
         type=str,

@@ -38,11 +38,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Args Parser for AUNU simulation")
     parser.add_argument("--log_file_path", type=str, default=os.path.join(os.path.dirname(__file__), "../loggings/zero_shot/run.log"), help="Path to store the log file")
     parser.add_argument(
-        "--strategy",
+        "--strategy_aunu",
         type=str,
         default="zero_shot",
         choices=["zero_shot", "user", "data", "mix"],
         help="AUNU strategy (default: zero_shot)",
+    )
+    parser.add_argument(
+        "--strategy_mimic",
+        type=str,
+        default="zero_shot",
+        choices=["zero_shot", "user", "data", "mix"],
+        help="MIMIC strategy (default: zero_shot)",
     )
     parser.add_argument(
         "--aunu_model",
@@ -78,8 +85,8 @@ def parse_args():
     )
     args = parser.parse_args()
 
-    if args.strategy in MIMIC_REQUIRED_STRATEGIES and args.mimic_model is None:
-        parser.error(f"--mimic_model is required when strategy is '{args.strategy}'")
+    if args.strategy_aunu in MIMIC_REQUIRED_STRATEGIES and args.mimic_model is None:
+        parser.error(f"--mimic_model is required when strategy is '{args.strategy_aunu}'")
 
     return args
 
@@ -123,7 +130,7 @@ def run_persona(args, persona_id: int, all_results: dict, out_path: str):
 
     print(f"\n✅ Simulation Complete for persona {persona_id}.")
 
-    final_state["strategy"] = args.strategy
+    final_state["strategy"] = args.strategy_aunu
     final_state["persona"] = persona_id
     final_state["dataset"] = args.dataset
     final_state["model"] = args.aunu_model
@@ -150,7 +157,7 @@ def run_simulation():
         ]
     )
 
-    out_dir = os.path.join(RESULTS_DIR, args.dataset.replace("/", "_"), args.strategy)
+    out_dir = os.path.join(RESULTS_DIR, args.dataset.replace("/", "_"), args.strategy_aunu)
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{args.aunu_model}.json")
 

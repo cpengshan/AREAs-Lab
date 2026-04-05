@@ -7,7 +7,7 @@ MIMIC_STRATEGIES = {"user", "mix"}
 
 
 def create_workflow(args):
-    strategy = args.strategy
+    strategy = args.strategy_aunu
     aunu = AUNUAgent(args)
 
     workflow = StateGraph(InteractionState)

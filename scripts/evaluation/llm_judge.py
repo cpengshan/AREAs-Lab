@@ -41,7 +41,7 @@ def evaluate_persona(persona_id: str, persona_result: dict, template, llm: LLM) 
         ground_truth_task_requirement=ground_truth,
     )
 
-    raw = llm.generate(prompt)
+    raw = llm.generate(prompt)["output"]
 
     try:
         evaluation = json.loads(raw)

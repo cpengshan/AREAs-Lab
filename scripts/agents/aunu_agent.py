@@ -15,7 +15,7 @@ PROMPT_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "../../prompts/age
 
 class AUNUAgent:
     def __init__(self, args):
-        self.strategy = args.strategy
+        self.strategy = args.strategy_aunu
         self.model_name = args.aunu_model
         self.llm = LLM(self.model_name)
         self.env = Environment(loader=FileSystemLoader(PROMPT_TEMPLATE_DIR))
@@ -104,7 +104,7 @@ class AUNUAgent:
             response = self.llm.generate(prompt)
             end_time = datetime.now(timezone.utc).isoformat()
 
-            self.task_requirement_curr = response
+            self.task_requirement_curr = response["output"]
 
             message = {
                 "start_time": start_time,
@@ -112,7 +112,8 @@ class AUNUAgent:
                 "role": self.role,
                 "action": "zero_shot",
                 "input": prompt,
-                "output": response,
+                "output": response["output"],
+                "cost": response["cost"],
                 "llm": self.model_name,
             }
             logger.info(json.dumps(message))

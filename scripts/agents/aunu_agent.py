@@ -6,24 +6,35 @@ import json
 logger = logging.getLogger(__name__)
 
 class AUNUAgent:
+<<<<<<< HEAD:code/agents/aunu_agent.py
     def __init__(self, strategy, user_instruction_init, data_path): 
         self.strategy = strategy
         self.dataset = self.load_dataset(data_path)
         self.task_requirement_curr = self.create_task_requirement(user_instruction_init)
+=======
+    def __init__(self, args):
+        self.strategy = args.strategy
+        self.dataset = self.load_dataset(args.data_path)
+        self.task_requirement_curr = self.create_task_requirement(args.user_instruction_init)
+        self.role = "aunu_agent"
+>>>>>>> data_synthesis:scripts/agents/aunu_agent.py
     
     def load_dataset(self, data_path):
         """
         Load the dataset csv file
         """
-        # TODO
-        df = pd.read_csv(data_path)
-        return df
+        try:
+            df = pd.read_csv(data_path)
+            return df
+        except:
+            logger.info("Data loading failed")
 
     def create_task_requirement_init(self, user_instruction_init):
         """
         Create the initial task requirement based on user's initial instruction
         """
-        task_requirement_init = user_instruction_init
+        # TODO
+        task_requirement_init = None
         return task_requirement_init
 
     def data_interaction(self, state: InteractionState):
@@ -32,7 +43,7 @@ class AUNUAgent:
         """
         messages = state["messages"]
         experiment_results = "Some experiment results"  # TODO
-        message = {"role": "experiment_result", "content": experiment_results}
+        message = {"role": self.role, "action": "experiment", "content": experiment_results}
         logger.info({json.dumps(message)})
         messages.append(message)
         return messages
@@ -43,14 +54,25 @@ class AUNUAgent:
         """
         messages = state["messages"]
         agent_question = "Tell me more" # TODO
-        message = {"role": "aunu_agent_question", "content": agent_question}
+        message = {"role": "aunu_agent", "action": "question", "content": agent_question}
         logger.info({json.dumps(message)})
         messages.append(message)
         return messages
     
-    def revise_task_requirement(self, state: InteractionState):
+    def reflectiion(self, state: InteractionState):
         """
-        revise the task requirement based on the latest experiment results and/or user feedback
+        Check human and/or data interaction results, figure out what in the current task_requirement should be revised.
+        """
+        messages = state["messages"]
+        message = {"role": "aunu_agent", "action": "reflection", "content": task_requirement_revised}
+        logger.info({json.dumps(message)})
+        messages.append(message)
+        return messages
+    
+    def task_requirement_revision(self, state: InteractionState):
+        """
+        Apply revisions based on reflection results. 
+        * Should we merge reflectiion with task_requirement_revision? *
         """
         messages = state["messages"]
         task_requirement_revised = None

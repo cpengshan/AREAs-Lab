@@ -3,7 +3,7 @@ import json
 from jinja2 import Environment, FileSystemLoader
 
 dir_data_analysis = "results/data_analysis"
-dir_prompt_template = "prompts/"
+dir_prompt_template = "prompts/data_process/"
 fname_prompt_template = "step 2: user_creation.jinja"
 NUM_USERS = 8
 

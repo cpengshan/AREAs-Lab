@@ -16,7 +16,7 @@ dataset_names = [
     'starmpcc/Asclepius-Synthetic-Clinical-Notes'
 ]
 
-dir_prompt_template = "prompts/"
+dir_prompt_template = "prompts/data_process/"
 fname_prompt_template = "step 1: data_analysis.jinja"
 
 env = Environment(loader=FileSystemLoader(dir_prompt_template))

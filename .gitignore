@@ -213,3 +213,4 @@ run.py
 scratchs/
 .vscode/
 private/
+.DS_Store

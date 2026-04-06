@@ -221,3 +221,6 @@ CLAUDE.md
 
 # Shell scripts
 *.sh
+
+# Results
+results

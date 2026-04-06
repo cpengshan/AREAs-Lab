@@ -1,0 +1,175 @@
+{
+  "1": {
+    "persona": "1",
+    "judge_model": "gemini-3.1-flash-lite-preview",
+    "evaluation": {
+      "missing": [
+        {
+          "section": "Execution Methodology",
+          "description": "The ground truth mandates a specific 'Chain-of-Thought' (Bottleneck identification -> Unlock extraction -> Business translation -> Competitive comparison), whereas the inferred version lacks a defined step-by-step reasoning logic."
+        },
+        {
+          "section": "Data Weighting",
+          "description": "The ground truth explicitly defines how to handle specific data inputs (treating mathematical proofs/figures as signals rather than noise) and defines 'Defensive Squatting' as a specific classification for lack of Problem-Solution pairs."
+        },
+        {
+          "section": "Performance Metrics",
+          "description": "The ground truth requires a 1-5 'Disruption Score' and the use of industry-specific KPIs (e.g., Spectral Efficiency, Hardware Footprint) which are absent in the inferred version."
+        }
+      ],
+      "hallucinated": [
+        {
+          "section": "Input Metadata",
+          "description": "The inferred version lists specific metadata requirements (Publication date, jurisdiction) not mentioned in the ground truth."
+        },
+        {
+          "section": "Technical Constraints",
+          "description": "The inferred version specifies a 150-word limit and real-time latency constraints, which are not present in the ground truth."
+        },
+        {
+          "section": "Output Format",
+          "description": "The inferred version mandates machine-readable formats like JSON/Markdown, which are not specified in the ground truth."
+        }
+      ],
+      "drifted": [
+        {
+          "section": "Tone and Style",
+          "ground_truth": "Requires 'Strategic IP Vernacular' and a clinical, skeptical tone focusing on 'Freedom to Operate' and 'Encumbrance'.",
+          "inferred": "Focuses on 'business-accessible language' and removing 'legalese' with a neutral, professional summary.",
+          "description": "The inferred version seeks general simplification, whereas the ground truth demands a more nuanced, domain-specific expert tone."
+        },
+        {
+          "section": "Quality Criteria",
+          "ground_truth": "Focuses on the ability of a VP of Engineering to make project decisions based on technical integrity.",
+          "inferred": "Focuses on standard QA metrics like <5% false positives in novelty assessment.",
+          "description": "The ground truth evaluates based on utility for R&D/Strategy, while the inferred version uses quantitative statistical metrics."
+        }
+      ],
+      "matched": [
+        {
+          "section": "Objective",
+          "description": "Both versions identify the core task of distilling complex patent abstracts into strategic insights for IP professionals."
+        },
+        {
+          "section": "Edge Cases",
+          "description": "Both versions correctly identify the need to filter out or flag low-value/non-novel filings."
+        }
+      ],
+      "summary": "The inferred requirement captures the high-level objective well but drifts significantly by introducing generic operational constraints (latency, word counts, machine-readability) while failing to capture the rigorous, expert-level technical methodology defined in the ground truth. The ground truth is focused on technical evaluation and strategic engineering utility, whereas the inferred version leans toward a standard automated document-processing task."
+    }
+  },
+  "2": {
+    "persona": "2",
+    "judge_model": "gemini-3.1-flash-lite-preview",
+    "evaluation": {
+      "missing": [
+        {
+          "section": "Data Weighting & Pre-processing",
+          "description": "The inferred version lacks explicit instructions to filter out boilerplate/procedural language or to prioritize the 'Operational Core' of the invention."
+        },
+        {
+          "section": "Tone & Style",
+          "description": "The requirement lacks guidance on the specific professional auditor tone, preferred regulatory vocabulary (e.g., 'Primary vs. Secondary CPC'), and the ban on machine learning jargon."
+        },
+        {
+          "section": "Output Schema",
+          "description": "The inferred requirement specifies a JSON schema for system output but misses the required auditor-specific classifications like 'Validated,' 'Questionable,' or 'Misclassified' and 'Dominant Domain Analysis'."
+        }
+      ],
+      "hallucinated": [
+        {
+          "section": "Constraints",
+          "description": "The inferred requirement adds specific latency constraints (1,000 patents in 60 minutes) and stability requirements that do not appear in the ground truth."
+        },
+        {
+          "section": "Output Requirements",
+          "description": "The inferred requirement requests a quantitative 'Drift Score' (0.0 to 1.0), which is not mentioned in the ground truth."
+        },
+        {
+          "section": "Assumptions/Failure Modes",
+          "description": "The inclusion of specific technical assumptions (e.g., zero-shot NLP frameworks) and failure modes (e.g., semantic over-correction) are fabricated additions."
+        }
+      ],
+      "drifted": [
+        {
+          "section": "Execution Methodology",
+          "ground_truth": "Requires a Chain-of-Thought process starting with domain keyword extraction, CPC logic mapping, and boundary conflict detection.",
+          "inferred": "Focuses on an automated, model-driven scoring system.",
+          "description": "The inferred version shifts the task from a manual/human-auditor-style workflow to an automated software specification, changing the nature of the task from a 'human auditor' protocol to an 'automated engine' design."
+        },
+        {
+          "section": "Boundary Conflicts",
+          "ground_truth": "Directs the auditor to identify if secondary domains (e.g., Electricity) are merely tools for the primary inventive step (e.g., Human Necessities).",
+          "inferred": "Treats multidisciplinary coverage as a classification edge case to be resolved by the engine.",
+          "description": "The ground truth provides specific regulatory logic for handling multi-domain patents, whereas the inferred version treats it as an algorithmic error detection task."
+        }
+      ],
+      "matched": [
+        {
+          "section": "Objective",
+          "description": "Correctly identifies the core mission of detecting label drift in patent classifications."
+        },
+        {
+          "section": "Input/Context",
+          "description": "Accurately captures the need for utilizing classification codes and patent text (claims/abstracts) as primary data."
+        }
+      ],
+      "summary": "The inferred requirement successfully captures the high-level objective of patent audit but fundamentally misinterprets the persona and execution methodology. It replaces the ground truth's procedural auditor instructions with an overly specific, technically constrained engineering requirement that includes several hallucinated performance metrics."
+    }
+  },
+  "3": {
+    "persona": "3",
+    "judge_model": "gemini-3.1-flash-lite-preview",
+    "evaluation": {
+      "missing": [
+        {
+          "section": "Execution Steps",
+          "description": "The ground truth mandates specific CoT (Chain-of-Thought) steps like explicit Market Scenario Generation (mapping to at least two industries) and a Problem-Solution Table, which are absent in the inferred requirement."
+        },
+        {
+          "section": "Content Requirements",
+          "description": "The ground truth requires a specific 'Problem-Solution Table' and a 'Pitch Header' (one-sentence); the inferred version mandates an 'Executive Summary' (two-sentence) and other differently structured sections."
+        },
+        {
+          "section": "Data Weighting",
+          "description": "The ground truth specifies explicit handling of input labels (e.g., Label 8) and prioritized signal extraction strategies (mechanical outcomes/material flexibility) which are missing from the inferred version."
+        }
+      ],
+      "hallucinated": [
+        {
+          "section": "Constraints",
+          "description": "The inferred version defines a Flesch-Kincaid grade level constraint (10-12) and a 5-second latency requirement; these operational parameters are not present in the ground truth."
+        },
+        {
+          "section": "Output Structure",
+          "description": "The inferred version mandates a 5-part structure (Executive Summary, Commercial Value Proposition, Market Readiness, IP Snapshot, CTA), whereas the ground truth requests a different 3-part structure (Pitch Header, Problem-Solution Table, Commercial Advantages)."
+        }
+      ],
+      "drifted": [
+        {
+          "section": "Scope of Tone",
+          "ground_truth": "Use 'Technology Transfer' specific vocabulary: Scalability, Unit Cost Reduction, Barrier to Entry.",
+          "inferred": "Persuasive, professional, and results-oriented (avoid legal-speak).",
+          "description": "The ground truth focuses on specific industry-standard 'Technology Transfer' terminology, while the inferred version uses more generalized business-sales terminology."
+        },
+        {
+          "section": "Functional Goal",
+          "ground_truth": "Focused on 'Product-Market Fit' and bridging the gap between technical disclosure and industrial utility.",
+          "inferred": "Focused on developing a 'synthesis engine' to create 'sell sheets' for licensing officers.",
+          "description": "The ground truth frames the task as a cognitive analytical process (Technical Licensing Officer), whereas the inferred version frames it as a technical product specification (automated synthesis engine)."
+        }
+      ],
+      "matched": [
+        {
+          "section": "Core Objective",
+          "description": "Both requirements share the fundamental goal of translating dense, technical, and legal patent language into commercially actionable value propositions."
+        },
+        {
+          "section": "Constraint",
+          "description": "Both requirements explicitly forbid the hallucination of functional capabilities not supported by the underlying patent text."
+        }
+      ],
+      "summary": "The inferred requirement successfully captures the high-level goal of patent-to-commercial translation but significantly drifts in implementation, imposing arbitrary technical constraints (latency, reading grade level) while missing critical operational directives like the Problem-Solution Table and industry-mapping workflows provided in the ground truth."
+    }
+  }
+}

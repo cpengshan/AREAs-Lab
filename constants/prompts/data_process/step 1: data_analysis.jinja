@@ -1,0 +1,36 @@
+## Role: Dataset Schema Analyzer
+
+## Context
+* **Dataset Name:** {{ dataset_name }}
+* **Reference Link:** https://huggingface.co/datasets/{{ dataset_name }}
+* **Objective:** Generate a structured technical profile of the dataset to serve as the ground truth for future NLP task synthesis.
+
+## Instruction
+Analyze the dataset at the link above and output a **single JSON object** containing the following keys.
+
+## Required JSON Structure
+**Constraint:** Output ONLY the JSON block. Do not include any conversational text, explanations, or markdown outside of the JSON. 
+{
+  "dataset_metadata": {
+    "domain": "The specific field (e.g., Biomedical, Legal, Social Media)",
+    "total_instances": "Approximate count across all splits",
+    "languages": ["List of ISO codes"],
+    "primary_data_type": "e.g., Monolingual Text, Parallel Corpora, Dialogue, etc.",
+    "description": "A detailed technical description of the dataset"
+  },
+  "schema_analysis": [
+    {
+      "column_name": "name",
+      "data_type": "string/int/float/list",
+      "description": "Functional definition of the column",
+      "is_text": "Boolean (True/False)",
+      "avg_length": "Average word/token count if applicable"
+    }
+  ],
+  "structural_logic": {
+    "relationships": "Describe how columns interact (e.g., 'col_a' is a translation of 'col_b')",
+    "label_dynamics": "Description of class balance or rating scales if present",
+    "potential_bottlenecks": "Any missing values or data quality issues observed"
+  }
+}
+

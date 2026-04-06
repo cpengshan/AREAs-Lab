@@ -1,0 +1,53 @@
+{
+    "dataset_metadata": {
+        "domain": "Psychology / Mental Health Support",
+        "total_instances": "1,053",
+        "languages": [
+            "en"
+        ],
+        "primary_data_type": "Dialogue (Emotional Support Conversations)",
+        "description": "ESConv is a large-scale dataset for Emotional Support Conversation. It features dialogues between a seeker facing a specific life problem and a supporter providing emotional support. The supporter's responses are annotated with eight types of support strategies based on helping-skills theory. The dataset covers multiple problem categories including relationship issues, academic pressure, and job-related stress."
+    },
+    "schema_analysis": [
+        {
+            "column_name": "dialog",
+            "data_type": "list",
+            "description": "A list of turn-by-turn utterances containing the text, speaker role (seeker/supporter), and strategy annotations.",
+            "is_text": true,
+            "avg_length": "approx. 29.8 turns per dialogue"
+        },
+        {
+            "column_name": "problem_type",
+            "data_type": "string",
+            "description": "The category of the seeker's distress (e.g., Job Regeneration, Issues with Friends).",
+            "is_text": true,
+            "avg_length": null
+        },
+        {
+            "column_name": "emotion_type",
+            "data_type": "string",
+            "description": "The specific emotion the seeker is experiencing (e.g., Anxiety, Depression, Sadness).",
+            "is_text": false,
+            "avg_length": null
+        },
+        {
+            "column_name": "situation",
+            "data_type": "string",
+            "description": "A brief background narrative describing the seeker's specific circumstances.",
+            "is_text": true,
+            "avg_length": "approx. 45 words"
+        },
+        {
+            "column_name": "strategy",
+            "data_type": "string",
+            "description": "The support strategy label assigned to supporter turns (e.g., Question, Reflection of feelings, Providing Suggestions).",
+            "is_text": false,
+            "avg_length": null
+        }
+    ],
+    "structural_logic": {
+        "relationships": "The 'situation' provides the context for the 'dialog'. Each turn in the 'dialog' is mapped to a speaker; 'supporter' turns are further mapped to a 'strategy' label to guide the response generation.",
+        "label_dynamics": "Multi-level labeling: includes high-level problem categories and fine-grained support strategies. Support strategies follow a sequential logic (e.g., Exploration usually precedes Action).",
+        "potential_bottlenecks": "Subjectivity in strategy annotation; potential for 'safety' risks in generated responses if used for training without strict ethical guardrails given the mental health context."
+    }
+}

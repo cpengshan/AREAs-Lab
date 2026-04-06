@@ -1,0 +1,218 @@
+[
+  {
+    "persona_id": 1,
+    "role": "知识产权战略专家 (IP Strategist)",
+    "competency_matrix": {
+      "proficiencies": [
+        "专利版图分析",
+        "市场差异化研究",
+        "专利组合价值评估"
+      ],
+      "limitations": [
+        "深层技术工程规格",
+        "布尔搜索语法"
+      ]
+    },
+    "business_motivation": "竞争优势：识别专利版图中的“空白地带”，以指导研发投资方向。",
+    "workflow_friction": "摘要通常写得过于宽泛或模糊，如果不进行对比分析，很难精准锁定真正的“新颖性”。",
+    "potential_tasks": [
+      {
+        "task_name": "创新差距分析",
+        "description": "分析特定 CPC 标签下的摘要，生成一份关于“饱和”技术权利要求与“新兴”趋势的总结报告。"
+      },
+      {
+        "task_name": "跨领域类比生成",
+        "description": "将高度专业化的物理类（标签 6）摘要转化为通俗易懂的商业术语，以评估跨行业的许可潜力。"
+      }
+    ]
+  },
+  {
+    "persona_id": 2,
+    "role": "专利质量审计员 (Patent Quality Auditor)",
+    "competency_matrix": {
+      "proficiencies": [
+        "合规性监管",
+        "CPC 分类标准",
+        "错误模式识别"
+      ],
+      "limitations": [
+        "机器学习模型架构",
+        "实时数据流处理"
+      ]
+    },
+    "business_motivation": "事实精准度：最大限度地降低“误分类率”，避免在审查阶段引发昂贵的法律挑战。",
+    "workflow_friction": "数据集中包含的缩写和术语可能导致“标签偏移”，即摘要内容在技术上跨越了两个 CPC 类别。",
+    "potential_tasks": [
+      {
+        "task_name": "标签一致性审计",
+        "description": "严谨评估“文本”列中的技术摘要是否在逻辑上足以支持所分配的 CPC 类别代码。"
+      },
+      {
+        "task_name": "边界案例识别",
+        "description": "识别包含多个领域关键词（如：医疗 + 电气）的摘要，并提出主次分类的判定理由。"
+      }
+    ]
+  },
+  {
+    "persona_id": 3,
+    "role": "技术许可专员 (Technical Licensing Officer)",
+    "competency_matrix": {
+      "proficiencies": [
+        "合同谈判",
+        "技术转移",
+        "关系管理"
+      ],
+      "limitations": [
+        "自然语言处理理论",
+        "代码编写与脚本执行"
+      ]
+    },
+    "business_motivation": "营收增长：提升向商业合作伙伴转移技术的速度和成功率。",
+    "workflow_friction": "从为了法律保护而撰写的摘要文本中，提取出具有商业吸引力的“应用场景”非常困难。",
+    "potential_tasks": [
+      {
+        "task_name": "自动化效益提取",
+        "description": "将技术摘要转化为“商业优势”和“问题-解决方案”配对的列表清单。"
+      },
+      {
+        "task_name": "领域特定幻觉检测",
+        "description": "核实 AI 生成的复杂“人类生活必需”类（标签 0）专利摘要中，是否凭空捏造了原文中不存在的功能。"
+      }
+    ]
+  },
+  {
+    "persona_id": 4,
+    "role": "初级专利审查员 (Junior Patent Examiner)",
+    "competency_matrix": {
+      "proficiencies": [
+        "现有技术检索",
+        "技术阅读理解",
+        "法律框架知识"
+      ],
+      "limitations": [
+        "历史存量专利的背景知识",
+        "高强度工作负载管理"
+      ]
+    },
+    "business_motivation": "效率：在保持高度审查严谨性的同时，缩短“单件结案耗时”指标。",
+    "workflow_friction": "摘要中密集、重复的句式结构使人工提取特征极其疲劳，且容易产生人为错误。",
+    "potential_tasks": [
+      {
+        "task_name": "核心权利要求提炼",
+        "description": "从摘要中提取主要独立权利要求要素，以促进更快速的现有技术匹配。"
+      },
+      {
+        "task_name": "语境歧义消除",
+        "description": "根据具体的 CPC 类别语境（例如：生物学中的“细胞”与电学中的“电池/单元”），解析摘要中的歧义缩写和技术术语。"
+      }
+    ]
+  },
+  {
+    "persona_id": 5,
+    "role": "深科技产品市场经理 (Product Marketing Manager - Deep Tech)",
+    "competency_matrix": {
+      "proficiencies": [
+        "价值主张设计",
+        "竞争情报收集",
+        "内容策略"
+      ],
+      "limitations": [
+        "法律术语",
+        "统计验证方法"
+      ]
+    },
+    "business_motivation": "市场感知：确保产品路线图充分考虑了竞争对手最新专利中的技术能力。",
+    "workflow_friction": "摘要侧重于“如何实现”（技术细节），而该角色需要知道“解决了什么”（市场面向）。",
+    "potential_tasks": [
+      {
+        "task_name": "功能到效益的映射",
+        "description": "将专利摘要重写为“产品发布简报”格式，供内部利益相关者传阅。"
+      },
+      {
+        "task_name": "对抗性专利模拟",
+        "description": "基于一组竞争对手的摘要，在无需法律顾问的情况下，识别潜在的“规避设计”策略以避免侵权。"
+      }
+    ]
+  },
+  {
+    "persona_id": 6,
+    "role": "合规与伦理主管 (Compliance & Ethics Lead)",
+    "competency_matrix": {
+      "proficiencies": [
+        "风险规避",
+        "算法公平性",
+        "政策起草"
+      ],
+      "limitations": [
+        "硬件工程",
+        "软件开发"
+      ]
+    },
+    "business_motivation": "透明度：确保在专利数据上训练的 AI 模型是可审计的，且不会对某些技术类别表现出系统性偏见。",
+    "workflow_friction": "原始数据集中缺乏人口统计学或元数据背景，难以评估“发明人多样性”或“地理偏见”。",
+    "potential_tasks": [
+      {
+        "task_name": "偏见敏感性筛选",
+        "description": "审查特定 CPC 类别的模型输出，确保技术摘要不会引入性别化或排他性语言。"
+      },
+      {
+        "task_name": "可解释性逻辑映射",
+        "description": "创建一份“理由文件”，解释摘要中的哪些特定技术关键词触发了高置信度的分类结果。"
+      }
+    ]
+  },
+  {
+    "persona_id": 7,
+    "role": "研发知识管理员 (R&D Knowledge Manager)",
+    "competency_matrix": {
+      "proficiencies": [
+        "信息架构",
+        "分类法管理",
+        "内部搜索优化"
+      ],
+      "limitations": [
+        "高等数学",
+        "神经网络微调"
+      ]
+    },
+    "business_motivation": "知识检索：确保 52,000 多条记录能被内部科学家通过直观的搜索发现。",
+    "workflow_friction": "CPC 标签过于宽泛（仅 9 个类别），无法满足细粒度的内部搜索需求；用户需要更具体的“标签”。",
+    "potential_tasks": [
+      {
+        "task_name": "子类标签自动化",
+        "description": "为每条摘要自动生成 3-5 个细粒度的“微标签”，超越 9 个高层级 CPC 类别。"
+      },
+      {
+        "task_name": "针对工程师的风格转换",
+        "description": "将“专利腔”撰写的摘要转换为标准的科学摘要格式，以提升内部数据库的可读性。"
+      }
+    ]
+  },
+  {
+    "persona_id": 8,
+    "role": "AI 运营协调员 (AI Operations Coordinator)",
+    "competency_matrix": {
+      "proficiencies": [
+        "工作流编排",
+        "SaaS 工具管理",
+        "质量保证"
+      ],
+      "limitations": [
+        "编写代码",
+        "特定领域的法律专业知识"
+      ]
+    },
+    "business_motivation": "成本效益：通过平衡模型性能与 Token 消耗，优化 LLM 在专利处理中的应用。",
+    "workflow_friction": "较长的摘要显著增加了 Token 成本；需要确定能保证准确处理的“最小可行文本长度”。",
+    "potential_tasks": [
+      {
+        "task_name": "Token 高效摘要术",
+        "description": "测试高度压缩后的摘要版本（少于 50 个 Token）是否仍能保留足够的技术密度以确分类。"
+      },
+      {
+        "task_name": "幻觉压力测试",
+        "description": "系统地对比“电学”（标签 7）专利的 AI 摘要与原文，识别常见的技术性“幻觉”模式。"
+      }
+    ]
+  }
+]

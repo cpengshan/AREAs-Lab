@@ -225,6 +225,9 @@ CLAUDE.md
 # Results
 results
 
+# Cache
+.llm_cache
+
 # .DS_Store
 .DS_Store
 **/ .DS_Store

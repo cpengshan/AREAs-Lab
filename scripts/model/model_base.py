@@ -19,9 +19,12 @@ PRICING_DATA = {
         "o3": {"input": 2.00, "output": 8.00}
     },
     "Google": {
-        "gemini-3.1-pro": {"input_std": 2.00, "input_long": 4.00, "output_std": 12.00, "output_long": 18.00},
-        "gemini-3.1-flash": {"input": 0.25, "output": 1.50},
-        "gemini-3.1-flash-lite": {"input": 0.13, "output": 0.75}
+        "gemini-2.5-pro-preview-03-25": {"input_std": 1.25, "input_long": 2.50, "output_std": 10.00, "output_long": 15.00},
+        "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+        "gemini-2.0-flash-lite": {"input": 0.075, "output": 0.30},
+        "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+        "gemini-1.5-pro": {"input_std": 1.25, "input_long": 2.50, "output_std": 5.00, "output_long": 10.00},
+        "gemini/gemini-3.1-flash-lite-preview": {"input": 0.075, "output": 0.30},
     },
     "Anthropic": {
         "claude-4.6-opus": {"input": 5.00, "output": 25.00},
@@ -63,13 +66,15 @@ class GeminiProvider(LLMProvider):
         genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
     def generate(self, model_name: str, prompt: str, **kwargs) -> Dict[str, Any]:
-        model = genai.GenerativeModel(model_name)
+        # Strip "gemini/" prefix if present — the API expects the bare model name
+        api_model_name = model_name.removeprefix("gemini/")
+        model = genai.GenerativeModel(api_model_name)
         response = model.generate_content(prompt)
         usage = response.usage_metadata
         prices = PRICING_DATA["Google"][model_name]
-        
-        # Special tiered logic for Gemini 3.1 Pro
-        if model_name == "gemini-3.1-pro":
+
+        # Special tiered logic for Pro models with long-context pricing
+        if "input_std" in prices:
             threshold = 200_000
             input_rate = prices["input_long"] if usage.prompt_token_count > threshold else prices["input_std"]
             output_rate = prices["output_long"] if usage.candidates_token_count > threshold else prices["output_std"]

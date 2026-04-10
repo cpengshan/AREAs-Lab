@@ -9,9 +9,13 @@ import datetime # Import datetime module
 logger = logging.getLogger(__name__)
 
 class MimicUser:
-    def __init__(self, persona: Dict[str, Any], task_requirement_gold: str,
-                 user_instruction_init: str, communication_style_init: str,
-                 model: str, template_path: str):
+    def __init__(self, 
+                persona: Dict[str, Any], 
+                task_requirement_gold: str,
+                user_instruction_init: str,
+                communication_style_init: str,
+                model: str, 
+                template_path: str):
         self.persona = persona
         self.task_requirement_gold = task_requirement_gold
         self.user_instruction_init = user_instruction_init

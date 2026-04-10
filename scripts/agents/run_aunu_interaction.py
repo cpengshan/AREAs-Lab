@@ -2,6 +2,10 @@ import logging
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))  # ensure agents/ is on path
+
 from interactive_manager import create_workflow
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "../../results")
@@ -54,7 +58,7 @@ def parse_args():
     parser.add_argument(
         "--aunu_model",
         type=str,
-        default="gemini-3.1-flash-lite-preview",
+        default="gemini/gemini-3.1-flash-lite-preview",
         help="Model name for the AUNU agent",
     )
     parser.add_argument(
@@ -83,6 +87,24 @@ def parse_args():
         choices=["elevator_pitch_summary", "deep_dive_summary"],
         help="Which field from the task file to use as the user instruction (default: elevator_pitch_summary)",
     )
+    parser.add_argument(
+        "--prompt_template_path",
+        type=str,
+        default=os.path.join(os.path.dirname(__file__), "../../prompts/agents/mimic_user"),
+        help="Directory containing MimicUser Jinja2 templates",
+    )
+    parser.add_argument(
+        "--prompt_template_user_feedback_path",
+        type=str,
+        default="feedback_mimic_user.jinja",
+        help="Filename of the MimicUser feedback template (relative to prompt_template_path)",
+    )
+    parser.add_argument(
+        "--max_turns",
+        type=int,
+        default=5,
+        help="Maximum number of aunu<->mimic_user turns before stopping (default: 5)",
+    )
     args = parser.parse_args()
 
     if args.strategy_aunu in MIMIC_REQUIRED_STRATEGIES and args.mimic_model is None:
@@ -91,7 +113,30 @@ def parse_args():
     return args
 
 
-def run_persona(args, persona_id: int, all_results: dict, out_path: str):
+def make_exp_dir(base_dir: str) -> str:
+    """Create and return the next available ExperimentN folder under base_dir."""
+    exp_id = 1
+    while os.path.exists(os.path.join(base_dir, f"Experiment{exp_id}")):
+        exp_id += 1
+    exp_dir = os.path.join(base_dir, f"Experiment{exp_id}")
+    os.makedirs(exp_dir)
+    return exp_dir
+
+
+def save_exp_settings(args, exp_dir: str):
+    """Save experiment input args to exp_setting.csv."""
+    import csv
+    settings = {k: v for k, v in vars(args).items()
+                if not k.startswith("_") and k not in ("persona_profile", "task_requirement_gold", "user_instruction_init")}
+    settings["persona"] = " ".join(str(p) for p in settings["persona"])
+    out_path = os.path.join(exp_dir, "exp_setting.csv")
+    with open(out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=settings.keys())
+        writer.writeheader()
+        writer.writerow(settings)
+
+
+def run_persona(args, persona_id: int, all_results: dict, exp_dir: str):
     persona_key = str(persona_id)
     if persona_key in all_results:
         print(f"Persona {persona_id} already evaluated. Skipping.")
@@ -101,34 +146,29 @@ def run_persona(args, persona_id: int, all_results: dict, out_path: str):
     user_instruction_init = load_user_instruction(args.dataset, persona_id, args.input_type)
     args.user_instruction_init = user_instruction_init
     args.persona_profile = persona
+    args.task_requirement_gold = load_ground_truth(args.dataset, persona_id)
 
     app = create_workflow(args)
 
-    initial_message = {
-        "start_time": None,
-        "end_time": None,
-        "role": "user",
-        "action": "init",
-        "input": "",
-        "output": user_instruction_init,
-        "llm": None,
-    }
     initial_state = {
-        "messages": [initial_message],
+        "messages": [],
         "is_complete": False,
         "task_requirement_final": "",
     }
 
-    print(f"🚀 Starting AU-NU Simulation for persona {persona_id}...")
+    print(f"Starting AU-NU Simulation for persona {persona_id}...")
+    all_messages = []
     final_state = {}
     for output in app.stream(initial_state):
         for node_name, state_update in output.items():
             print(f"\n--- Node: {node_name} ---")
             if "messages" in state_update:
+                all_messages.extend(state_update["messages"])
                 print(f"Message: {state_update['messages'][-1]['output']}")
             final_state.update(state_update)
+    final_state["messages"] = all_messages
 
-    print(f"\n✅ Simulation Complete for persona {persona_id}.")
+    print(f"\nSimulation Complete for persona {persona_id}.")
 
     final_state["strategy"] = args.strategy_aunu
     final_state["persona"] = persona_id
@@ -138,13 +178,26 @@ def run_persona(args, persona_id: int, all_results: dict, out_path: str):
     final_state["ground_truth"] = load_ground_truth(args.dataset, persona_id)
 
     all_results[persona_key] = final_state
+
+    out_path = os.path.join(exp_dir, "output.json")
     with open(out_path, "w") as f:
         json.dump(all_results, f, indent=2)
+
+    # Create empty eval_results.json placeholder
+    eval_path = os.path.join(exp_dir, "eval_results.json")
+    if not os.path.exists(eval_path):
+        with open(eval_path, "w") as f:
+            json.dump({}, f, indent=2)
+
     print(f"Results saved to {out_path}")
 
 
 def run_simulation():
     args = parse_args()
+
+    base_dir = os.path.join(RESULTS_DIR, args.dataset.replace("/", "_"), args.strategy_aunu)
+    os.makedirs(base_dir, exist_ok=True)
+    exp_dir = make_exp_dir(base_dir)
 
     # --- Logging Configuration ---
     os.makedirs(os.path.dirname(args.log_file_path), exist_ok=True)
@@ -157,17 +210,11 @@ def run_simulation():
         ]
     )
 
-    out_dir = os.path.join(RESULTS_DIR, args.dataset.replace("/", "_"), args.strategy_aunu)
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{args.aunu_model}.json")
+    save_exp_settings(args, exp_dir)
 
     all_results = {}
-    if os.path.exists(out_path):
-        with open(out_path) as f:
-            all_results = json.load(f)
-
     for persona_id in args.persona:
-        run_persona(args, persona_id, all_results, out_path)
+        run_persona(args, persona_id, all_results, exp_dir)
 
 if __name__ == "__main__":
     run_simulation()

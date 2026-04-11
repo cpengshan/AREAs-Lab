@@ -60,6 +60,9 @@ class AUNUAgent:
             "input": "",  # TODO: rendered prompt
             "output": experiment_results,
             "llm": self.model_name,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost": 0.0,
         }
         logger.info(json.dumps(message))
         return message
@@ -93,6 +96,9 @@ class AUNUAgent:
             "input": prompt,
             "output": response["output"],
             "llm": self.model_name,
+            "input_tokens": response.get("input_tokens", 0),
+            "output_tokens": response.get("output_tokens", 0),
+            "cost": response.get("cost", 0.0),
         }
         logger.info(json.dumps(message))
         return message
@@ -112,6 +118,9 @@ class AUNUAgent:
             "input": "",  # TODO: rendered prompt
             "output": task_requirement_revised,
             "llm": self.model_name,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost": 0.0,
         }
         logger.info(json.dumps(message))
         return message
@@ -133,6 +142,9 @@ class AUNUAgent:
             "input": "",  # TODO: rendered prompt
             "output": task_requirement_revised,
             "llm": self.model_name,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost": 0.0,
         }
         logger.info(json.dumps(message))
         return message
@@ -170,6 +182,9 @@ class AUNUAgent:
             "input": prompt,
             "output": response["output"],
             "llm": self.model_name,
+            "input_tokens": response.get("input_tokens", 0),
+            "output_tokens": response.get("output_tokens", 0),
+            "cost": response.get("cost", 0.0),
         }
         logger.info(json.dumps(message))
         return message
@@ -198,6 +213,9 @@ class AUNUAgent:
                 "input": prompt,
                 "output": response["output"],
                 "llm": self.model_name,
+                "input_tokens": response.get("input_tokens", 0),
+                "output_tokens": response.get("output_tokens", 0),
+                "cost": response.get("cost", 0.0),
             }
             logger.info(json.dumps(message))
 

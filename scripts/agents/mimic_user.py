@@ -62,6 +62,9 @@ class MimicUser:
             "feedback": parsed.get("feedback", raw_output),
             "thought": parsed.get("thought", ""),
             "is_complete": False,
+            "input_tokens": response.get("input_tokens", 0),
+            "output_tokens": response.get("output_tokens", 0),
+            "cost": response.get("cost", 0.0),
         }
 
     def respond(self, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,6 +86,9 @@ class MimicUser:
                 "input": "",
                 "output": self.user_instruction_init,
                 "llm": None,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost": 0.0,
             }
             logger.info("MimicUser init message: %s", json.dumps(message))
             return {
@@ -111,6 +117,9 @@ class MimicUser:
             "input": last_agent_message["output"],
             "output": reply,
             "llm": self.model,
+            "input_tokens": llm_result.get("input_tokens", 0),
+            "output_tokens": llm_result.get("output_tokens", 0),
+            "cost": llm_result.get("cost", 0.0),
         }
         logger.info("Generated mimic user message: %s", json.dumps(message))
 

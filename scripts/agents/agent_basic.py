@@ -10,6 +10,9 @@ class Message(TypedDict):
     input: str          # rendered prompt sent to LLM
     output: str         # raw output from LLM
     llm: str            # model name, e.g. "claude-sonnet-4-6"
+    input_tokens: int   # number of input/prompt tokens consumed
+    output_tokens: int  # number of output/completion tokens generated
+    cost: float         # estimated cost in USD for this LLM call
 
 
 class InteractionState(TypedDict):

@@ -77,11 +77,14 @@ class MimicUser:
         message = {
             "start_time": current_time,
             "end_time": current_time,
-            "role": "mimic_user",  # Role remains 'mimic_user' as this is its response
-            "action": "respond",   # Action is 'respond' for a reply
-            "input": last_agent_question, # Input is now the last agent's question
-            "output": reply,       # The actual reply content
-            "llm": self.model        # LLM metadata now includes model name directly
+            "role": "mimic_user",
+            "action": "respond",
+            "input": last_agent_question,
+            "output": reply,
+            "llm": self.model,
+            "input_tokens": llm_result.get("llm_metadata", {}).get("prompt_tokens", 0),
+            "output_tokens": llm_result.get("llm_metadata", {}).get("completion_tokens", 0),
+            "cost": 0.0,
         }
         logger.info("Generated mimic user message: %s", json.dumps(message))
 

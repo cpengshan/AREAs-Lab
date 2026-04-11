@@ -14,6 +14,7 @@ PRICING_DATA = {
     "OpenAI": {
         "gpt-5": {"input": 1.25, "output": 10.00},
         "gpt-5-mini": {"input": 0.25, "output": 2.00},
+        "gpt-5.4-mini": {"input": 0.75, "output": 4.50}, 
         "gpt-4.1": {"input": 2.00, "output": 8.00},
         "gpt-4o-mini": {"input": 0.15, "output": 0.60},
         "o3": {"input": 2.00, "output": 8.00}
@@ -29,9 +30,13 @@ PRICING_DATA = {
     "Anthropic": {
         "claude-4.6-opus": {"input": 5.00, "output": 25.00},
         "claude-4.6-sonnet": {"input": 3.00, "output": 15.00},
+        "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
         "claude-4.5-haiku": {"input": 1.00, "output": 5.00}
     }
 }
+
+# Models that use max_completion_tokens instead of max_tokens
+MODELS_USING_MAX_COMPLETION_TOKENS = {"gpt-5.4-mini", "gpt-5", "gpt-5-mini", "o3"}
 
 # --- Provider Implementation Strategies ---
 
@@ -47,6 +52,8 @@ class OpenAIProvider(LLMProvider):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def generate(self, model_name: str, prompt: str, **kwargs) -> Dict[str, Any]:
+        if model_name in MODELS_USING_MAX_COMPLETION_TOKENS and "max_tokens" in kwargs:
+            kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
         response = self.client.chat.completions.create(
             model=model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -58,8 +65,13 @@ class OpenAIProvider(LLMProvider):
         # Calculate cost: (tokens / 1,000,000) * price_per_1M
         cost = (usage.prompt_tokens / 1e6 * prices["input"]) + \
                (usage.completion_tokens / 1e6 * prices["output"])
-               
-        return {"output": response.choices[0].message.content, "cost": cost}
+
+        return {
+            "output": response.choices[0].message.content,
+            "input_tokens": usage.prompt_tokens,
+            "output_tokens": usage.completion_tokens,
+            "cost": cost,
+        }
 
 class GeminiProvider(LLMProvider):
     def __init__(self):
@@ -84,7 +96,12 @@ class GeminiProvider(LLMProvider):
             cost = (usage.prompt_token_count / 1e6 * prices["input"]) + \
                    (usage.candidates_token_count / 1e6 * prices["output"])
 
-        return {"output": response.text, "cost": cost}
+        return {
+            "output": response.text,
+            "input_tokens": usage.prompt_token_count,
+            "output_tokens": usage.candidates_token_count,
+            "cost": cost,
+        }
 
 class AnthropicProvider(LLMProvider):
     def __init__(self):
@@ -104,7 +121,12 @@ class AnthropicProvider(LLMProvider):
         cost = (usage.input_tokens / 1e6 * prices["input"]) + \
                (usage.output_tokens / 1e6 * prices["output"])
 
-        return {"output": response.content[0].text, "cost": cost}
+        return {
+            "output": response.content[0].text,
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "cost": cost,
+        }
 
 # --- Main Class ---
 

@@ -60,6 +60,11 @@ def main():
         default=None,
         help="Subset of entry IDs to evaluate (e.g. --ids 1 3). Defaults to all IDs.",
     )
+    parser.add_argument(
+        "--strategy",
+        required=True,
+        help="Strategy name used during the experiment (e.g. zero_shot, user, data, mix, persona).",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -67,7 +72,7 @@ def main():
         repo_root
         / "results"
         / "ccdv_patent-classification"
-        / "user"
+        / args.strategy
         / f"Experiment{args.id}"
     )
     input_path = experiment_dir / "output.json"

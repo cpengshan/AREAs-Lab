@@ -15,7 +15,7 @@ PROMPT_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "../../prompts/age
 
 class AUNUAgent:
     def __init__(self, strategy: str, model: str, user_instruction_init: str,
-                 dataset: str = None, max_turns: int = 5):
+                 dataset: str = None, max_turns: int = 5, persona: str = None):
         self.strategy = strategy
         self.model_name = model
         self.llm = LLM(self.model_name)
@@ -25,6 +25,7 @@ class AUNUAgent:
         self.task_requirement_curr = user_instruction_init
         self.max_turns = max_turns
         self.role = "aunu_agent"
+        self.persona = persona
     
     def load_dataset(self, dataset: str):
         """
@@ -196,8 +197,40 @@ class AUNUAgent:
         messages = state["messages"]
         # --- PSEUDO-CODE FOR STRATEGIES ---
         if self.strategy == "zero_shot":
-            template = self.env.get_template("zeroshot.jinja")
+            template = self.env.get_template("zero_shot.jinja")
             prompt = template.render(user_instruction=self.task_requirement_curr)
+
+            start_time = datetime.now(timezone.utc).isoformat()
+            response = self.llm.generate(prompt)
+            end_time = datetime.now(timezone.utc).isoformat()
+
+            self.task_requirement_curr = response["output"]
+
+            message = {
+                "start_time": start_time,
+                "end_time": end_time,
+                "role": self.role,
+                "action": "zero_shot",
+                "input": prompt,
+                "output": response["output"],
+                "llm": self.model_name,
+                "input_tokens": response.get("input_tokens", 0),
+                "output_tokens": response.get("output_tokens", 0),
+                "cost": response.get("cost", 0.0),
+            }
+            logger.info(json.dumps(message))
+
+            return {
+                "messages": [message],
+                "is_complete": True,
+                "task_requirement_final": self.task_requirement_curr,
+            }
+        elif self.strategy == "persona":
+            template = self.env.get_template("zero_shot.jinja")
+            prompt = template.render(
+                user_instruction=self.task_requirement_curr,
+                persona=self.persona,
+            )
 
             start_time = datetime.now(timezone.utc).isoformat()
             response = self.llm.generate(prompt)

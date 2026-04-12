@@ -19,6 +19,7 @@ def create_workflow(args):
         user_instruction_init=args.user_instruction_init,
         dataset=args.dataset,
         max_turns=getattr(args, "max_turns", 5),
+        persona=getattr(args, "persona_profile", None),
     )
 
     workflow = StateGraph(InteractionState)

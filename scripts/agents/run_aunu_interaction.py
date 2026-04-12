@@ -45,7 +45,7 @@ def parse_args():
         "--strategy_aunu",
         type=str,
         default="zero_shot",
-        choices=["zero_shot", "user", "data", "mix"],
+        choices=["zero_shot", "persona", "user", "data", "mix"],
         help="AUNU strategy (default: zero_shot)",
     )
     parser.add_argument(

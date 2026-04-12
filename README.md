@@ -18,7 +18,7 @@ This framework requires API access to various LLM providers. Before running expe
 
 ---
 
-## 🚀 Usage Example
+## 🚀 LLM Usage Example
 
 The `LLM` class provides a unified, stateful interface. You simply define the model name during initialization, and the appropriate provider is resolved automatically.
 
@@ -37,3 +37,11 @@ print(claude.generate("Who is the first president in the United States?", temper
 # 3. Initialize for Google Gemini
 gemini = LLM(model_name="gemini-3-flash-preview")
 print(gemini.generate("What is the Cappital of France"))
+
+# You can also use generate results in a batch
+gpt = LLM(model_name="gpt-4o")
+prompts = [
+    "What are the two most popular coding languages in 2026?",
+    "What is the Capital of France"
+]
+results = gpt.generate_batch(prompts)

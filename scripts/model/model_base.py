@@ -6,7 +6,8 @@ from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
 
 from openai import OpenAI
-import google.generativeai as genai
+from google import genai
+
 from anthropic import Anthropic
 from diskcache import Cache
 
@@ -18,18 +19,19 @@ PRICING_DATA = {
         "gpt-5": {"input": 1.25, "output": 10.00},
         "gpt-5-mini": {"input": 0.25, "output": 2.00},
         "gpt-4.1": {"input": 2.00, "output": 8.00},
-        "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+        "gpt-4.1-mini": {"input": 0.40, "output": 1.60},
         "o3": {"input": 2.00, "output": 8.00}
     },
     "Google": {
-        "gemini-3.1-pro": {"input_std": 2.00, "input_long": 4.00, "output_std": 12.00, "output_long": 18.00},
-        "gemini-3.1-flash": {"input": 0.25, "output": 1.50},
-        "gemini-3.1-flash-lite": {"input": 0.13, "output": 0.75}
+        # Use the -preview suffix for 3.1 models in 2026
+        "gemini-3.1-pro-preview": {"input_std": 2.00, "input_long": 4.00, "output_std": 12.00, "output_long": 18.00},
+        "gemini-3-flash-preview": {"input": 0.50, "output": 3.00}, 
+        "gemini-3.1-flash-lite-preview": {"input": 0.25, "output": 1.50}
     },
     "Anthropic": {
         "claude-4.6-opus": {"input": 5.00, "output": 25.00},
         "claude-4.6-sonnet": {"input": 3.00, "output": 15.00},
-        "claude-4.5-haiku": {"input": 1.00, "output": 5.00}
+        "claude-4.5-haiku": {"input": 0.80, "output": 4.00}
     }
 }
 
@@ -60,28 +62,52 @@ class OpenAIProvider(LLMProvider):
                
         return {"output": response.choices[0].message.content, "cost": cost}
 
-class GeminiProvider(LLMProvider):
+class GeminiProvider:
     def __init__(self):
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        # The new SDK uses a Client object
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
     def generate(self, model_name: str, prompt: str, **kwargs) -> Dict[str, Any]:
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(prompt)
+        # Generate content using the new client syntax
+        response = self.client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+        
         usage = response.usage_metadata
+        
+        # KEY FIX: In the new SDK, attributes use the '_count' suffix
+        # and 'candidates' instead of 'completion'
+        input_tokens = usage.prompt_token_count
+        output_tokens = usage.candidates_token_count
+        
+        # Fetch pricing from your global PRICING_DATA
+        if model_name not in PRICING_DATA["Google"]:
+            raise ValueError(f"Model {model_name} not found in PRICING_DATA")
+            
         prices = PRICING_DATA["Google"][model_name]
         
-        if model_name == "gemini-3.1-pro":
+        # Logic for Tiered Pricing (Gemini 3.1 Pro 200k threshold)
+        if "input_long" in prices:
             threshold = 200_000
-            input_rate = prices["input_long"] if usage.prompt_token_count > threshold else prices["input_std"]
-            output_rate = prices["output_long"] if usage.candidates_token_count > threshold else prices["output_std"]
-            cost = (usage.prompt_token_count / 1e6 * input_rate) + \
-                   (usage.candidates_token_count / 1e6 * output_rate)
+            # Note: Threshold usually applies based on TOTAL context (input)
+            is_long = input_tokens > threshold
+            
+            input_rate = prices["input_long"] if is_long else prices["input_std"]
+            output_rate = prices["output_long"] if is_long else prices["output_std"]
+            
+            cost = (input_tokens / 1e6 * input_rate) + \
+                   (output_tokens / 1e6 * output_rate)
         else:
-            cost = (usage.prompt_token_count / 1e6 * prices["input"]) + \
-                   (usage.candidates_token_count / 1e6 * prices["output"])
+            # Standard calculation for Flash/Lite models
+            cost = (input_tokens / 1e6 * prices["input"]) + \
+                   (output_tokens / 1e6 * prices["output"])
 
-        return {"output": response.text, "cost": cost}
-
+        return {
+            "output": response.text, 
+            "cost": cost
+        }
+     
 class AnthropicProvider(LLMProvider):
     def __init__(self):
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))

@@ -124,16 +124,13 @@ def make_exp_dir(base_dir: str) -> str:
 
 
 def save_exp_settings(args, exp_dir: str):
-    """Save experiment input args to exp_setting.csv."""
-    import csv
+    """Save experiment input args to exp_setting.json."""
     settings = {k: v for k, v in vars(args).items()
                 if not k.startswith("_") and k not in ("persona_profile", "task_requirement_gold", "user_instruction_init")}
-    settings["persona"] = " ".join(str(p) for p in settings["persona"])
-    out_path = os.path.join(exp_dir, "exp_setting.csv")
-    with open(out_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=settings.keys())
-        writer.writeheader()
-        writer.writerow(settings)
+    settings["persona"] = [int(p) for p in settings["persona"]]
+    out_path = os.path.join(exp_dir, "exp_setting.json")
+    with open(out_path, "w") as f:
+        json.dump(settings, f, indent=2)
 
 
 def run_persona(args, persona_id: int, all_results: dict, exp_dir: str):

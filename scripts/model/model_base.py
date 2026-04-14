@@ -142,9 +142,6 @@ class LLM:
         self.provider = self._select_provider(model_name)
 
     def _select_provider(self, model_name: str) -> LLMProvider:
-        """
-        Validates model name and selects the correct provider.
-        """
         if model_name in PRICING_DATA["OpenAI"]:
             return OpenAIProvider()
         elif model_name in PRICING_DATA["Google"]:
@@ -155,19 +152,30 @@ class LLM:
             valid_models = [m for p in PRICING_DATA.values() for m in p.keys()]
             raise ValueError(f"Model '{model_name}' not supported. Valid models: {valid_models}")
 
-    def generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
+    def generate(self, prompt: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
         """
         Generates text and returns a dictionary with 'output' and 'cost'.
-        Utilizes disk caching to prevent redundant API calls.
+        
+        Args:
+            prompt: The string to send to the LLM.
+            use_cache: If True (default), returns cached results if available. 
+                       If False, forces a fresh API call.
+            **kwargs: Additional provider arguments (temperature, max_tokens, etc.)
         """
+        # Create a unique key for the cache based on model, prompt, and settings
         cache_key = (self.model_name, prompt, str(sorted(kwargs.items())))
 
-        if cache_key in self.cache:
+        # 1. Check cache ONLY if use_cache is True
+        if use_cache and cache_key in self.cache:
             return self.cache[cache_key]
 
         try:
             result = self.provider.generate(self.model_name, prompt, **kwargs)
-            self.cache[cache_key] = result
+            
+            # 2. Store in cache ONLY if use_cache is True
+            if use_cache:
+                self.cache[cache_key] = result
+                
             return result
         except Exception as e:
             return {
@@ -175,25 +183,15 @@ class LLM:
                 "cost": 0.0
             }
 
-    def generate_batch(self, prompts: List[str], max_workers: int = 6, **kwargs) -> List[Dict[str, Any]]:
+    def generate_batch(self, prompts: List[str], use_cache: bool = True, max_workers: int = 6, **kwargs) -> List[Dict[str, Any]]:
         """
         Generates text for a batch of prompts concurrently.
-        Maintains the exact order of the original prompts in the output list.
-        
-        Args:
-            prompts: A list of prompt strings.
-            max_workers: Maximum number of concurrent threads.
-            **kwargs: Additional arguments to pass to the provider (like temperature, max_tokens).
-            
-        Returns:
-            A list of dictionaries containing 'output' and 'cost' in the same order as the inputs.
         """
-        # Create a partial function to lock in the kwargs for mapping
-        func = partial(self.generate, **kwargs)
+        # Pass use_cache into the partial function so all batch items respect the flag
+        func = partial(self.generate, use_cache=use_cache, **kwargs)
         
-        # Use ThreadPoolExecutor for concurrent I/O bound operations
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # executor.map automatically preserves the original order of the iterable
             results = list(executor.map(func, prompts))
             
         return results
+

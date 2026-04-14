@@ -152,7 +152,7 @@ class LLM:
             valid_models = [m for p in PRICING_DATA.values() for m in p.keys()]
             raise ValueError(f"Model '{model_name}' not supported. Valid models: {valid_models}")
 
-    def generate(self, prompt: str, use_cache: bool = True, **kwargs) -> Dict[str, Any]:
+    def generate(self, prompt: str, use_cache: bool = False, **kwargs) -> Dict[str, Any]:
         """
         Generates text and returns a dictionary with 'output' and 'cost'.
         
@@ -183,7 +183,7 @@ class LLM:
                 "cost": 0.0
             }
 
-    def generate_batch(self, prompts: List[str], use_cache: bool = True, max_workers: int = 6, **kwargs) -> List[Dict[str, Any]]:
+    def generate_batch(self, prompts: List[str], use_cache: bool = False, max_workers: int = 6, **kwargs) -> List[Dict[str, Any]]:
         """
         Generates text for a batch of prompts concurrently.
         """

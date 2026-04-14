@@ -36,7 +36,7 @@ print(claude.generate("Who is the first president in the United States?", temper
 
 # 3. Initialize for Google Gemini
 gemini = LLM(model_name="gemini-3-flash-preview")
-print(gemini.generate("What is the Cappital of France"))
+print(gemini.generate("What is the Cappital of France", use_cache=True))
 
 # You can also use generate results in a batch
 gpt = LLM(model_name="gpt-4o")

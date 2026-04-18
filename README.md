@@ -45,3 +45,28 @@ prompts = [
     "What is the Capital of France"
 ]
 results = gpt.generate_batch(prompts)
+```
+
+---
+
+## 📊 Visualization UI
+
+The result visualization UI requires two servers: a Python static file server (serving result data) and the Vite frontend. If running on a remote machine, forward both ports via SSH.
+
+**Terminal 1 (remote) — static file server:**
+```bash
+python -m http.server 3000 --bind 0.0.0.0
+```
+
+**Terminal 2 (remote) — frontend dev server:**
+```bash
+cd agentic-ui
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+**Terminal 3 (local Mac) — SSH port forwarding:**
+```bash
+ssh -N -L 5173:localhost:5173 -L 3000:localhost:3000 ada
+```
+
+Then open `http://localhost:5173` in your local browser.

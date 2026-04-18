@@ -20,6 +20,7 @@ def create_workflow(args):
         dataset=args.dataset,
         max_turns=getattr(args, "max_turns", 5),
         persona=getattr(args, "persona_profile", None),
+        user_interaction_template=getattr(args, "aunu_template", "user_interaction.jinja"),
     )
 
     workflow = StateGraph(InteractionState)
@@ -37,7 +38,9 @@ def create_workflow(args):
             user_instruction_init=args.user_instruction_init,
             communication_style_init=getattr(args, "communication_style_init", ""),
             model=args.mimic_model,
-            template_path=getattr(args, "mimic_template_path", DEFAULT_TEMPLATE_PATH),
+            template_path=getattr(args, "mimic_template_path",
+                                  os.path.join(os.path.dirname(__file__), "../../prompts/agents/mimic_user",
+                                               getattr(args, "mimic_template", "feedback_mimic_user.jinja"))),
         )
         workflow.add_node("mimic_user", mimic.respond)
 

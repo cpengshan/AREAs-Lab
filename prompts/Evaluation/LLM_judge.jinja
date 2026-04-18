@@ -48,8 +48,7 @@ Match predicted units to ground-truth units based on semantic equivalence.
 
 Alignment rules:
 - A match means the predicted unit preserves the same intent as the ground-truth unit, even if phrased differently.
-- One predicted unit can match at most one ground-truth unit.
-- One ground-truth unit can match at most one predicted unit.
+- A single ground-truth unit may align with multiple predicted units if the original idea is decomposed or split across them.
 - If a predicted unit only partially matches a ground-truth unit but weakens, distorts, or misinterprets it, place it in misaligned_units instead of matched_pairs.
 - Any ground-truth unit not covered by prediction is missing.
 - Any predicted unit not supported by the ground truth is hallucinated.
@@ -79,33 +78,9 @@ misaligned_units = [
   }
 ]
 
---------------------------------------------------
-STEP 3: IDENTIFY CRITICAL CONSTRAINTS
-
-From the ground-truth units, identify which units are critical.
-
-A critical unit is one that belongs to one of these categories:
-- core mission or strategic objective
-- key execution step
-- explicit output requirement
-- non-negotiable domain constraint
-- prohibition or required behavior
-- high-stakes evaluation criterion
-
-Return:
-
-critical_units = [
-  ...
-]
-
-critical_missing = [
-  ...
-]
-
-A critical unit is counted as preserved only if it is correctly matched and not merely partially related.
 
 --------------------------------------------------
-STEP 4: COMPUTE SCORES
+STEP 3: COMPUTE SCORES
 
 Compute the following scores as floats between 0 and 1.
 
@@ -119,19 +94,11 @@ Definition:
 
 If there are no matched_pairs and no misaligned_units, set alignment = 0.0.
 
-3. completeness_alignment
-Definition:
-(completeness + alignment) / 2
-
-4. faithfulness
+3. faithfulness
 Definition:
 1 - (number of hallucinated_units / total number of predicted_units)
 
 If total predicted_units = 0, set faithfulness = 0.0.
-
-5. constraint_preservation
-Definition:
-(number of critical units correctly matched) / (total number of critical units)
 
 If there are no critical units, set constraint_preservation = 0.0.
 
@@ -140,7 +107,6 @@ IMPORTANT EVALUATION RULES
 
 - Be strict.
 - Do not reward vague summaries when the ground truth is specific.
-- Missing critical constraints should strongly lower the evaluation.
 - Ground truth is the only source of truth.
 - Do not assume omitted details are implied.
 - Focus on whether the predicted requirement faithfully recovers the task specification.
@@ -195,9 +161,7 @@ Return ONLY valid JSON with this exact structure:
   "scores": {
     "completeness": 0.0,
     "alignment": 0.0,
-    "completeness_alignment": 0.0,
     "faithfulness": 0.0,
-    "constraint_preservation": 0.0
   },
   "summary": "Brief explanation of the major differences, especially missing critical constraints, hallucinations, and misinterpretations."
 }

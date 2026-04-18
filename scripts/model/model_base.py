@@ -19,6 +19,7 @@ PRICING_DATA = {
         "gpt-5": {"input": 1.25, "output": 10.00},
         "gpt-5-mini": {"input": 0.25, "output": 2.00},
         "gpt-5.4-mini": {"input": 0.75, "output": 4.50}, 
+        "gpt-5.4":  {"input": 2.5, "output": 15}, 
         "gpt-4.1": {"input": 2.00, "output": 8.00},
         "gpt-4.1-mini": {"input": 0.40, "output": 1.60},
         "o3": {"input": 2.00, "output": 8.00}
@@ -29,9 +30,10 @@ PRICING_DATA = {
         "gemini-2.0-flash-lite": {"input": 0.075, "output": 0.30},
         "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
         "gemini-1.5-pro": {"input_std": 1.25, "input_long": 2.50, "output_std": 5.00, "output_long": 10.00},
-        "gemini/gemini-3.1-flash-lite-preview": {"input": 0.075, "output": 0.30},
+        "gemini-3.1-flash-lite-preview": {"input": 0.075, "output": 0.30},
     },
     "Anthropic": {
+        "claude-opus-4-7": {"input": 5.00, "output": 25.00},
         "claude-4.6-opus": {"input": 5.00, "output": 25.00},
         "claude-4.6-sonnet": {"input": 3.00, "output": 15.00},
         "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
@@ -40,7 +42,7 @@ PRICING_DATA = {
 }
 
 # Models that use max_completion_tokens instead of max_tokens
-MODELS_USING_MAX_COMPLETION_TOKENS = {"gpt-5.4-mini", "gpt-5", "gpt-5-mini", "o3"}
+MODELS_USING_MAX_COMPLETION_TOKENS = {"gpt-5.4", "gpt-5.4-mini", "gpt-5", "gpt-5-mini", "o3"}
 
 # --- Provider Implementation Strategies ---
 
@@ -68,7 +70,10 @@ class OpenAIProvider(LLMProvider):
         
         cost = (usage.prompt_tokens / 1e6 * prices["input"]) + \
                (usage.completion_tokens / 1e6 * prices["output"])
-
+        if not response.choices[0].message.content or not response.choices[0].message.content:
+            print("#" * 100)
+            print(response)
+            print("#" * 100)
         return {
             "output": response.choices[0].message.content,
             "input_tokens": usage.prompt_tokens,
@@ -82,14 +87,15 @@ class GeminiProvider:
         self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
     def generate(self, model_name: str, prompt: str, **kwargs) -> Dict[str, Any]:
-        # Generate content using the new client syntax
+        # Strip "gemini/" prefix (LiteLLM convention not understood by the SDK)
+        bare_name = model_name.removeprefix("gemini/")
         response = self.client.models.generate_content(
-            model=model_name,
+            model=bare_name,
             contents=prompt
         )
-        
+
         usage = response.usage_metadata
-        
+
         # KEY FIX: In the new SDK, attributes use the '_count' suffix
         # and 'candidates' instead of 'completion'
         input_tokens = usage.prompt_token_count
@@ -156,8 +162,8 @@ class LLM:
     """
     def __init__(self, model_name: str, cache_dir: str = ".llm_cache"):
         self.model_name = model_name
-        self.cache_dir = cache_dir
-        self.cache = Cache(self.cache_dir)
+        # self.cache_dir = cache_dir
+        # self.cache = Cache(self.cache_dir)
         self.provider = self._select_provider(model_name)
 
     def _select_provider(self, model_name: str) -> LLMProvider:
@@ -179,14 +185,25 @@ class LLM:
         Generates text and returns a dictionary with 'output' and 'cost'.
         Utilizes disk caching to prevent redundant API calls.
         """
-        cache_key = (self.model_name, prompt, str(sorted(kwargs.items())))
+        # cache_key = (self.model_name, prompt, str(sorted(kwargs.items())))
 
-        if cache_key in self.cache:
-            return self.cache[cache_key]
+        # try:
+        #     if cache_key in self.cache:
+        #         return self.cache[cache_key]
+        #     result = self.provider.generate(self.model_name, prompt, **kwargs)
+        #     if result.get("output"):
+        #         self.cache[cache_key] = result
+        #     return result
+        # except Exception as e:
+        #     return {
+        #         "output": f"Error using {self.model_name}: {str(e)}",
+        #         "cost": 0.0
+        #     }
+
+        # cache_key = (self.model_name, prompt, str(sorted(kwargs.items())))
 
         try:
             result = self.provider.generate(self.model_name, prompt, **kwargs)
-            self.cache[cache_key] = result
             return result
         except Exception as e:
             return {

@@ -4,6 +4,17 @@ Your goal is to gather enough information from the user to produce a precise, co
 
 ---
 
+# Interaction Constraints
+- **Max iterations**: {{ max_iterations }}
+- **Current iteration**: {{ current_iteration }}
+- **Remaining iterations**: {{ max_iterations - current_iteration }}
+
+You must cover ALL key aspects of the task within the remaining iterations.
+Prioritize breadth over depth — do NOT dig deep into a single item when other important aspects are still uncovered.
+If multiple gaps exist, ask about the most critical uncovered area, not a follow-up on something already partially answered.
+
+---
+
 # Your Objective
 Analyze what is already known about the user's needs and identify the single most important gap in information.
 Then ask the user ONE focused question to fill that gap.
@@ -24,6 +35,7 @@ Think about:
 - Performance expectations or evaluation criteria
 - Domain-specific knowledge the user may have but hasn't shared
 
+With {{ max_iterations - current_iteration }} iteration(s) remaining, prioritize covering uncovered topics over drilling deeper into already-discussed ones.
 Ask ONE specific, targeted question that will most help clarify the user's true needs.
 Do NOT repeat questions already asked. Do NOT ask broad or generic questions.
 
@@ -37,6 +49,8 @@ Think about:
 - What specific goals or outcomes the user is trying to achieve
 - What data, inputs, or constraints are involved
 - What "good" looks like to this user
+- What is the identity of this user
+- What is the specific format or requirement of this task
 
 Ask ONE specific, targeted opening question that goes beyond the surface of their request
 to uncover the most important underlying detail needed to fulfill their needs precisely.

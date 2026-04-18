@@ -8,6 +8,7 @@ class Message(TypedDict):
     role: str           # "aunu_agent" | "mimic_user"
     action: str         # method name, e.g. "user_interaction", "data_interaction", "revise_task_requirement", "respond"
     input: str          # rendered prompt sent to LLM
+    prompt_template: str  # name of the Jinja2 template used to render the prompt
     output: str         # raw output from LLM
     llm: str            # model name, e.g. "claude-sonnet-4-6"
     input_tokens: int   # number of input/prompt tokens consumed
@@ -19,3 +20,4 @@ class InteractionState(TypedDict):
     messages: Annotated[Sequence[Message], operator.add]  # All messages exchanged between aunu_agent and mimic_user
     is_complete: bool                                      # Whether the interaction is complete
     task_requirement_final: str                            # Final task requirement produced by the agent
+    max_iterations: int                                    # Maximum number of user-interaction turns allowed

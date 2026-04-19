@@ -9,7 +9,7 @@ type LoadedRun = {
   error: string | null;
 };
 
-const DEFAULT_DATASETS = ["alexfabbri_multi_news"];
+const DEFAULT_DATASETS = ["alexfabbri_multi_news", "ccdv_arxiv-summarization", "ccdv_govreport-summarization", "ccdv_patent-classification", "ccdv_pubmed-summarization"];
 const DEFAULT_STRATEGIES = ["zero_shot", "persona", "user", "data", "mix"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 const METRIC_KEYS = [

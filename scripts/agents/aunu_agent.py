@@ -29,6 +29,7 @@ class AUNUAgent:
         self.role = "aunu_agent"
         self.persona = persona
         self.user_interaction_template = user_interaction_template
+
     
     # Ordered preference lists: first column name found in the DataFrame wins.
     _INPUT_COLUMN_CANDIDATES = ["text", "article", "report", "script", "news_text"]
@@ -241,6 +242,46 @@ class AUNUAgent:
         logger.info(json.dumps(message))
         return message
 
+
+    def merge_zero_shot_data(self, state: InteractionState, user_instruction: str) -> dict:
+        """
+        Final step for the data strategy: merge the zero-shot draft from the start
+        of the session with the final data-interaction requirement.
+        """
+        messages = state["messages"]
+
+        zero_shot_requirement = next(
+            (m["output"] for m in messages if m["role"] == self.role and m["action"] == "zero_shot"),
+            "",
+        )
+
+        merge_template = self.env.get_template("merge_zero_shot_data.jinja")
+        merge_prompt = merge_template.render(
+            user_instruction=user_instruction,
+            zero_shot_requirement=zero_shot_requirement,
+            data_interaction_requirement=self.task_requirement_curr,
+        )
+        merge_start = datetime.now(timezone.utc).isoformat()
+        merge_response = self.llm.generate(merge_prompt)
+        merge_end = datetime.now(timezone.utc).isoformat()
+
+        self.task_requirement_curr = merge_response["output"]
+
+        merge_message = {
+            "start_time": merge_start,
+            "end_time": merge_end,
+            "role": self.role,
+            "action": "merge_zero_shot_data",
+            "input": merge_prompt,
+            "prompt_template": "merge_zero_shot_data.jinja",
+            "output": merge_response["output"],
+            "llm": self.model_name,
+            "input_tokens": merge_response.get("input_tokens", 0),
+            "output_tokens": merge_response.get("output_tokens", 0),
+            "cost": merge_response.get("cost", 0.0),
+        }
+        logger.info(json.dumps(merge_message))
+        return [merge_message]
 
     def task_requirement_prediction(self, state: InteractionState):
         """
@@ -473,7 +514,8 @@ class AUNUAgent:
 
         elif self.strategy == "data":
             new_messages = []
-            # Step 1: zero-shot on the very first call to get an initial task requirement
+
+            # Step 1: zero-shot on the very first call to seed task_requirement_curr
             has_zero_shot = any(m["role"] == self.role and m["action"] == "zero_shot" for m in messages)
             if not has_zero_shot:
                 template = self.env.get_template("zero_shot.jinja")
@@ -511,10 +553,11 @@ class AUNUAgent:
                 data_turns += 1
                 is_complete = data_turns >= self.max_turns
 
+            # Step 3: on completion, merge zero-shot seed with final data-interaction result
             if is_complete:
-                pred_state = {"messages": messages + new_messages}
-                pred_message = self.task_requirement_prediction(pred_state)
-                new_messages.append(pred_message)
+                merge_state = {"messages": messages + new_messages}
+                merge_messages = self.merge_zero_shot_data(merge_state, self.task_requirement_curr)
+                new_messages.extend(merge_messages)
 
             return {
                 "messages": new_messages,

@@ -2,6 +2,7 @@ import pandas as pd
 from agent_basic import InteractionState
 import logging
 import json
+import re
 import random
 from datetime import datetime, timezone
 import os
@@ -12,12 +13,22 @@ from model.model_base import LLM
 
 logger = logging.getLogger(__name__)
 
+def _parse_json_output(text: str) -> dict:
+    """Extract and parse JSON from LLM output that may have markdown fences and trailing content."""
+    text = text.strip()
+    match = re.search(r"```json\s*(.*?)\s*```", text, flags=re.DOTALL)
+    if match:
+        return json.loads(match.group(1))
+    # Fallback: try raw text
+    return json.loads(text)
+
 PROMPT_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "../../prompts/agents/aunu_agent")
 
 class AUNUAgent:
     def __init__(self, strategy: str, model: str, user_instruction_init: str,
                  dataset: str = None, max_turns: int = 5, persona: str = None,
-                 user_interaction_template: str = "user_interaction.jinja"):
+                 user_interaction_template: str = "user_interaction.jinja",
+                 zero_shot_seed: dict = None):
         self.strategy = strategy
         self.model_name = model
         self.llm = LLM(self.model_name)
@@ -29,6 +40,8 @@ class AUNUAgent:
         self.role = "aunu_agent"
         self.persona = persona
         self.user_interaction_template = user_interaction_template
+        # Pre-loaded zero_shot message (skips LLM call when provided)
+        self.zero_shot_seed = zero_shot_seed
 
     
     # Ordered preference lists: first column name found in the DataFrame wins.
@@ -118,14 +131,23 @@ class AUNUAgent:
         )
 
         start_time = datetime.now(timezone.utc).isoformat()
-        reflect_response = self.llm.generate(reflect_prompt)
+        reflect_response = self.llm.generate(reflect_prompt, max_tokens=12288)
         end_time = datetime.now(timezone.utc).isoformat()
 
         total_input_tokens += reflect_response.get("input_tokens", 0)
         total_output_tokens += reflect_response.get("output_tokens", 0)
         total_cost += reflect_response.get("cost", 0.0)
 
-        self.task_requirement_curr = reflect_response["output"]
+        try:
+            parsed = _parse_json_output(reflect_response["output"])
+            improved_requirement = parsed.get("improved_task_requirement", reflect_response["output"])
+            potential_ambiguity = parsed.get("potential_ambiguity", "")
+        except (json.JSONDecodeError, TypeError):
+            parsed = {}
+            improved_requirement = reflect_response["output"]
+            potential_ambiguity = ""
+
+        self.task_requirement_curr = improved_requirement
 
         message = {
             "start_time": start_time,
@@ -134,12 +156,17 @@ class AUNUAgent:
             "action": "data_interaction",
             "input": reflect_prompt,
             "prompt_template": "data_interaction.jinja",
-            "output": reflect_response["output"],
-            "sample_data": sample_data,
+            "identified_ambiguity": potential_ambiguity,
+            "output": improved_requirement,
             "llm": self.model_name,
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
             "cost": total_cost,
+            "data": {
+                "sample_data": sample_data,
+                "output_evaluation": parsed.get("output_evaluation", ""),
+                "refinement_strategy": parsed.get("refinement_strategy", ""),
+            },
         }
         logger.info(json.dumps(message))
         return message
@@ -178,6 +205,14 @@ class AUNUAgent:
         response = self.llm.generate(prompt)
         end_time = datetime.now(timezone.utc).isoformat()
 
+        try:
+            parsed = _parse_json_output(response["output"])
+            question = parsed.get("question", response["output"])
+            identified_ambiguity = parsed.get("identified_ambiguity", "")
+        except (json.JSONDecodeError, TypeError):
+            question = response["output"]
+            identified_ambiguity = ""
+
         message = {
             "start_time": start_time,
             "end_time": end_time,
@@ -185,7 +220,8 @@ class AUNUAgent:
             "action": "user_interaction",
             "input": prompt,
             "prompt_template": self.user_interaction_template,
-            "output": response["output"],
+            "identified_ambiguity": identified_ambiguity,
+            "output": question,
             "llm": self.model_name,
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
@@ -208,6 +244,7 @@ class AUNUAgent:
             "action": "reflection",
             "input": "",  # TODO: rendered prompt
             "prompt_template": "",  # TODO: template name
+            "identified_ambiguity": "",
             "output": task_requirement_revised,
             "llm": self.model_name,
             "input_tokens": 0,
@@ -233,6 +270,7 @@ class AUNUAgent:
             "action": "task_requirement_revision",
             "input": "",  # TODO: rendered prompt
             "prompt_template": "",  # TODO: template name
+            "identified_ambiguity": "",
             "output": task_requirement_revised,
             "llm": self.model_name,
             "input_tokens": 0,
@@ -274,6 +312,7 @@ class AUNUAgent:
             "action": "merge_zero_shot_data",
             "input": merge_prompt,
             "prompt_template": "merge_zero_shot_data.jinja",
+            "identified_ambiguity": "",
             "output": merge_response["output"],
             "llm": self.model_name,
             "input_tokens": merge_response.get("input_tokens", 0),
@@ -308,7 +347,7 @@ class AUNUAgent:
         )
 
         start_time = datetime.now(timezone.utc).isoformat()
-        response = self.llm.generate(prompt)
+        response = self.llm.generate(prompt, max_tokens=12288)
         end_time = datetime.now(timezone.utc).isoformat()
 
         self.task_requirement_curr = response["output"]
@@ -320,6 +359,7 @@ class AUNUAgent:
             "action": "task_requirement_prediction",
             "input": prompt,
             "prompt_template": "task_requirement_prediction.jinja",
+            "identified_ambiguity": "",
             "output": response["output"],
             "llm": self.model_name,
             "input_tokens": response.get("input_tokens", 0),
@@ -329,17 +369,85 @@ class AUNUAgent:
         logger.info(json.dumps(message))
         return message
 
-    def mix_interaction(self, state: InteractionState) -> list:
+    def _route(self, state: InteractionState) -> tuple[str, dict]:
         """
-        One turn of the mix strategy:
-        1. Sample 1 data row and execute current task requirement.
-        2. LLM checks gaps and refines the task requirement (mix_data_check.jinja).
-        3. Run user_interaction to generate a question for mimic_user.
-        Returns a list of messages [mix_data_check_msg, user_interaction_msg].
+        Call the router LLM to decide 'user' or 'data' for this hybrid turn.
+        Returns (strategy, router_message).
         """
         messages = state["messages"]
         current_iteration = sum(
-            1 for m in messages if m["role"] == self.role and m["action"] == "mix_data_check"
+            1 for m in messages if m["role"] == self.role and m["action"] == "hybrid_router"
+        )
+        max_iterations = state.get("max_iterations", self.max_turns)
+
+        user_instruction = next(
+            (m["output"] for m in messages if m["role"] == "mimic_user" and m["action"] == "init"),
+            "",
+        )
+        chat_history = [
+            m for m in messages
+            if m["role"] in (self.role, "mimic_user") and m["action"] not in ("init", "zero_shot")
+        ]
+
+        template = self.env.get_template("hybrid_router.jinja")
+        prompt = template.render(
+            user_instruction=user_instruction,
+            current_task_requirement=self.task_requirement_curr,
+            chat_history=chat_history,
+            max_iterations=max_iterations,
+            current_iteration=current_iteration,
+        )
+
+        start_time = datetime.now(timezone.utc).isoformat()
+        response = self.llm.generate(prompt)
+        end_time = datetime.now(timezone.utc).isoformat()
+
+        try:
+            parsed = _parse_json_output(response["output"])
+            strategy = parsed.get("strategy", "user")
+            reasoning = parsed.get("reasoning", "")
+            if strategy not in ("user", "data"):
+                strategy = "user"
+        except (json.JSONDecodeError, TypeError):
+            strategy = "user"
+            reasoning = ""
+
+        # Accumulate all router decisions from previous turns into a running list
+        prior_list = []
+        for m in messages:
+            if m["role"] == self.role and m["action"] == "hybrid_router":
+                prior_list.extend(m.get("data", {}).get("list", []))
+        reasoning_list = prior_list + [{"turn": current_iteration, "strategy": strategy, "reasoning": reasoning}]
+
+        router_message = {
+            "start_time": start_time,
+            "end_time": end_time,
+            "role": self.role,
+            "action": "hybrid_router",
+            "input": prompt,
+            "prompt_template": "hybrid_router.jinja",
+            "identified_ambiguity": "",
+            "output": strategy,
+            "llm": self.model_name,
+            "input_tokens": response.get("input_tokens", 0),
+            "output_tokens": response.get("output_tokens", 0),
+            "cost": response.get("cost", 0.0),
+            "data": {"list": reasoning_list},
+        }
+        logger.info(json.dumps(router_message))
+        return strategy, router_message
+
+    def hybrid_interaction(self, state: InteractionState) -> list:
+        """
+        One turn of the hybrid strategy:
+        1. Sample 1 data row and execute current task requirement.
+        2. LLM checks gaps and refines the task requirement (hybrid_data_check.jinja).
+        3. Run user_interaction to generate a question for mimic_user.
+        Returns a list of messages [hybrid_data_check_msg, user_interaction_msg].
+        """
+        messages = state["messages"]
+        current_iteration = sum(
+            1 for m in messages if m["role"] == self.role and m["action"] == "hybrid_data_check"
         )
         max_iterations = state.get("max_iterations", self.max_turns)
 
@@ -359,7 +467,7 @@ class AUNUAgent:
         user_feedback = last_user_msg["output"] if last_user_msg else ""
 
         # Step 3: Check gaps and refine task requirement
-        check_template = self.env.get_template("mix_data_check.jinja")
+        check_template = self.env.get_template("hybrid_data_check.jinja")
         check_prompt = check_template.render(
             current_task_requirement=self.task_requirement_curr,
             sample=sample_data,
@@ -382,9 +490,10 @@ class AUNUAgent:
             "start_time": start_time,
             "end_time": end_time,
             "role": self.role,
-            "action": "mix_data_check",
+            "action": "hybrid_data_check",
             "input": check_prompt,
-            "prompt_template": "mix_data_check.jinja",
+            "prompt_template": "hybrid_data_check.jinja",
+            "identified_ambiguity": "",
             "output": check_response["output"],
             "sample_data": [sample_data],
             "llm": self.model_name,
@@ -472,28 +581,34 @@ class AUNUAgent:
         elif self.strategy == "user":
             new_messages = []
 
-            # First call only: run zero-shot to seed an inferred draft before talking to the user
+            # First call only: seed task_requirement_curr with a zero-shot draft
             has_zero_shot = any(m["role"] == self.role and m["action"] == "zero_shot" for m in messages)
             if not has_zero_shot:
-                template = self.env.get_template("zero_shot.jinja")
-                prompt = template.render(user_instruction=self.task_requirement_curr)
-                start_time = datetime.now(timezone.utc).isoformat()
-                response = self.llm.generate(prompt)
-                end_time = datetime.now(timezone.utc).isoformat()
-                self.task_requirement_curr = response["output"]
-                zs_message = {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "role": self.role,
-                    "action": "zero_shot",
-                    "input": prompt,
-                    "prompt_template": "zero_shot.jinja",
-                    "output": response["output"],
-                    "llm": self.model_name,
-                    "input_tokens": response.get("input_tokens", 0),
-                    "output_tokens": response.get("output_tokens", 0),
-                    "cost": response.get("cost", 0.0),
-                }
+                if self.zero_shot_seed is not None:
+                    # Reuse pre-loaded zero_shot output — no LLM call
+                    zs_message = self.zero_shot_seed
+                    self.task_requirement_curr = zs_message["output"]
+                else:
+                    template = self.env.get_template("zero_shot.jinja")
+                    prompt = template.render(user_instruction=self.task_requirement_curr)
+                    start_time = datetime.now(timezone.utc).isoformat()
+                    response = self.llm.generate(prompt)
+                    end_time = datetime.now(timezone.utc).isoformat()
+                    self.task_requirement_curr = response["output"]
+                    zs_message = {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "role": self.role,
+                        "action": "zero_shot",
+                        "input": prompt,
+                        "prompt_template": "zero_shot.jinja",
+                        "identified_ambiguity": "",
+                        "output": response["output"],
+                        "llm": self.model_name,
+                        "input_tokens": response.get("input_tokens", 0),
+                        "output_tokens": response.get("output_tokens", 0),
+                        "cost": response.get("cost", 0.0),
+                    }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
 
@@ -515,28 +630,33 @@ class AUNUAgent:
         elif self.strategy == "data":
             new_messages = []
 
-            # Step 1: zero-shot on the very first call to seed task_requirement_curr
+            # Step 1: seed task_requirement_curr with a zero-shot draft
             has_zero_shot = any(m["role"] == self.role and m["action"] == "zero_shot" for m in messages)
             if not has_zero_shot:
-                template = self.env.get_template("zero_shot.jinja")
-                prompt = template.render(user_instruction=self.task_requirement_curr)
-                start_time = datetime.now(timezone.utc).isoformat()
-                response = self.llm.generate(prompt)
-                end_time = datetime.now(timezone.utc).isoformat()
-                self.task_requirement_curr = response["output"]
-                zs_message = {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "role": self.role,
-                    "action": "zero_shot",
-                    "input": prompt,
-                    "prompt_template": "zero_shot.jinja",
-                    "output": response["output"],
-                    "llm": self.model_name,
-                    "input_tokens": response.get("input_tokens", 0),
-                    "output_tokens": response.get("output_tokens", 0),
-                    "cost": response.get("cost", 0.0),
-                }
+                if self.zero_shot_seed is not None:
+                    zs_message = self.zero_shot_seed
+                    self.task_requirement_curr = zs_message["output"]
+                else:
+                    template = self.env.get_template("zero_shot.jinja")
+                    prompt = template.render(user_instruction=self.task_requirement_curr)
+                    start_time = datetime.now(timezone.utc).isoformat()
+                    response = self.llm.generate(prompt)
+                    end_time = datetime.now(timezone.utc).isoformat()
+                    self.task_requirement_curr = response["output"]
+                    zs_message = {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "role": self.role,
+                        "action": "zero_shot",
+                        "input": prompt,
+                        "prompt_template": "zero_shot.jinja",
+                        "identified_ambiguity": "",
+                        "output": response["output"],
+                        "llm": self.model_name,
+                        "input_tokens": response.get("input_tokens", 0),
+                        "output_tokens": response.get("output_tokens", 0),
+                        "cost": response.get("cost", 0.0),
+                    }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
 
@@ -565,44 +685,61 @@ class AUNUAgent:
                 "task_requirement_final": self.task_requirement_curr,
             }
 
-        elif self.strategy == "mix":
+        elif self.strategy == "hybrid":
             new_messages = []
 
-            # First call only: run zero-shot to seed task_requirement_curr
+            # Step 1: seed task_requirement_curr with a zero-shot draft
             has_zero_shot = any(m["role"] == self.role and m["action"] == "zero_shot" for m in messages)
             if not has_zero_shot:
-                template = self.env.get_template("zero_shot.jinja")
-                prompt = template.render(user_instruction=self.task_requirement_curr)
-                start_time = datetime.now(timezone.utc).isoformat()
-                response = self.llm.generate(prompt)
-                end_time = datetime.now(timezone.utc).isoformat()
-                self.task_requirement_curr = response["output"]
-                zs_message = {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "role": self.role,
-                    "action": "zero_shot",
-                    "input": prompt,
-                    "prompt_template": "zero_shot.jinja",
-                    "output": response["output"],
-                    "llm": self.model_name,
-                    "input_tokens": response.get("input_tokens", 0),
-                    "output_tokens": response.get("output_tokens", 0),
-                    "cost": response.get("cost", 0.0),
-                }
+                if self.zero_shot_seed is not None:
+                    zs_message = self.zero_shot_seed
+                    self.task_requirement_curr = zs_message["output"]
+                else:
+                    template = self.env.get_template("zero_shot.jinja")
+                    prompt = template.render(user_instruction=self.task_requirement_curr)
+                    start_time = datetime.now(timezone.utc).isoformat()
+                    response = self.llm.generate(prompt)
+                    end_time = datetime.now(timezone.utc).isoformat()
+                    self.task_requirement_curr = response["output"]
+                    zs_message = {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "role": self.role,
+                        "action": "zero_shot",
+                        "input": prompt,
+                        "prompt_template": "zero_shot.jinja",
+                        "identified_ambiguity": "",
+                        "output": response["output"],
+                        "llm": self.model_name,
+                        "input_tokens": response.get("input_tokens", 0),
+                        "output_tokens": response.get("output_tokens", 0),
+                        "cost": response.get("cost", 0.0),
+                    }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
 
-            # Count completed mix turns (each turn = data_check + user_interaction)
+            # Count completed hybrid turns (each router decision = one turn)
             mix_turns = sum(
-                1 for m in messages if m["role"] == self.role and m["action"] == "mix_data_check"
+                1 for m in messages if m["role"] == self.role and m["action"] == "hybrid_router"
             )
             is_complete = mix_turns >= self.max_turns
 
             if not is_complete:
                 mix_state = {**state, "messages": messages + new_messages, "max_iterations": self.max_turns}
-                mix_msgs = self.mix_interaction(mix_state)
-                new_messages.extend(mix_msgs)
+
+                # Step 2: router decides which strategy to run this turn
+                chosen_strategy, router_msg = self._route(mix_state)
+                new_messages.append(router_msg)
+                mix_state = {**mix_state, "messages": mix_state["messages"] + [router_msg]}
+
+                # Step 3: run one iteration of the chosen strategy
+                if chosen_strategy == "data":
+                    data_msg = self.data_interaction(mix_state)
+                    new_messages.append(data_msg)
+                else:
+                    ui_msg = self.user_interaction(mix_state)
+                    new_messages.append(ui_msg)
+
                 mix_turns += 1
                 is_complete = mix_turns >= self.max_turns
 

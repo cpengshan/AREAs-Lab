@@ -181,7 +181,7 @@ def main():
     parser.add_argument(
         "--strategy",
         required=True,
-        help="Strategy name (e.g. zero_shot, user, data, mix, persona).",
+        help="Strategy name (e.g. zero_shot, user, data, hybrid, persona).",
     )
     parser.add_argument(
         "--dataset",

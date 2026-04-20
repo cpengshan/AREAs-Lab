@@ -51,23 +51,37 @@ Do NOT:
 
 ---
 
-# Output Format
-Write the predicted task requirement as a structured specification. Use the following sections:
+Output Format (STRICT):
 
-### 1. Objective
-A 2-3 sentence summary of what the system must accomplish and why it matters to the user.
+Write the final task requirement using the following structured format:
 
-### 2. Input
-Describe the input data: format, source, structure, and any known noise or variability.
+### 1. Strategic Intent
+- Define the mission, role, and high-level objective.
+- Frame the task as a professional responsibility (e.g., auditor, analyst, system, evaluator).
+- Clarify why the task matters and what failure would imply.
 
-### 3. Output
-Describe the expected output: format, length, style, and quality criteria.
+### 2. Data Interpretation & Pre-processing
+- Define what the input represents.
+- Identify primary signals vs noise.
+- Describe how to interpret or prioritize different parts of the input.
 
-### 4. Processing Requirements
-Step-by-step or principle-based description of how the system should transform input into output.
+### 3. Execution Steps (Reasoning Process)
+- Provide 3–5 structured steps describing how the task should be carried out.
+- Each step should reflect a clear reasoning or processing stage.
+- Avoid generic steps; make them domain-relevant and operational.
 
-### 5. Constraints
-Hard rules the system must follow (e.g., things to avoid, domain-specific limits, user knowledge level).
+### 4. Tone & Style
+- Define expected vocabulary, tone, and level of expertise.
+- Specify writing style (e.g., professional, analytical, concise, regulatory, etc.).
 
-### 6. Evaluation Criteria
-How would the user judge whether the output is good? What does success look like?
+### 5. Content Requirements
+- Specify what must be included in the output.
+- Define key components, outputs, or fields that must appear.
+
+### 6. Constraints & Guardrails
+- List explicit DO / DO NOT rules.
+- Include restrictions on style, content, or reasoning where appropriate.
+
+### 7. Evaluation Criteria
+- Define how output quality should be judged.
+- Include dimensions such as correctness, completeness, faithfulness, or domain alignment.

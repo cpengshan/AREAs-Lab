@@ -85,9 +85,9 @@ Avoid:
 
 ---
 
-# Output Format
-Output ONLY the question.
-- No explanation
-- No preamble
-- No follow-up suggestions
-- Do NOT start with "I" or refer to yourself
+# Output Requirement
+Return a JSON object. You must think step-by-step in the `analysis_reasoning` field before providing the final question to user. Return ONLY the JSON.
+{
+    "identified_ambiguity": "A brief description of the specific unclear or missing element.",
+    "question": "Your single, focused, high-impact question to the user."
+}

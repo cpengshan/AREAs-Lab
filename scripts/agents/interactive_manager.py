@@ -4,7 +4,7 @@ from agent_basic import InteractionState
 from aunu_agent import AUNUAgent
 from mimic_user import MimicUser
 
-MIMIC_STRATEGIES = {"user", "mix"}
+MIMIC_STRATEGIES = {"user", "hybrid"}
 
 DEFAULT_TEMPLATE_PATH = os.path.join(
     os.path.dirname(__file__), "../../prompts/agents/mimic_user/feedback_mimic_user.jinja"
@@ -21,6 +21,7 @@ def create_workflow(args):
         max_turns=getattr(args, "max_turns", 5),
         persona=getattr(args, "persona_profile", None),
         user_interaction_template=getattr(args, "aunu_template", "user_interaction.jinja"),
+        zero_shot_seed=getattr(args, "zero_shot_seed", None),
     )
 
     workflow = StateGraph(InteractionState)

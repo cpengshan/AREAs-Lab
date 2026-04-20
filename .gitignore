@@ -231,20 +231,3 @@ results
 # .DS_Store
 .DS_Store
 **/ .DS_Store
-
-# Results
-results
-
-# Cache
-.llm_cache
-
-# .DS_Store
-.DS_Store
-**/ .DS_Store
-
-# Results
-results
-
-# .DS_Store
-.DS_Store
-**/ .DS_Store

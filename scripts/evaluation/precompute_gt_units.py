@@ -35,7 +35,7 @@ from jinja2 import Environment, FileSystemLoader
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from model.model_base import LLM
 
-STRATEGY_PRIORITY = ["zero_shot", "user", "persona", "data", "mix"]
+STRATEGY_PRIORITY = ["zero_shot", "user", "persona", "data", "hybrid"]
 
 
 def parse_args():

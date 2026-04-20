@@ -10,7 +10,7 @@ type LoadedRun = {
 };
 
 const DEFAULT_DATASETS = ["alexfabbri_multi_news", "ccdv_mediasum", "HuggingFaceFW_fineweb-edu"];
-const DEFAULT_STRATEGIES = ["zero_shot", "user", "data", "mix"];
+const DEFAULT_STRATEGIES = ["zero_shot", "user", "data", "hybrid"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 
 async function fetchJson(url: string) {

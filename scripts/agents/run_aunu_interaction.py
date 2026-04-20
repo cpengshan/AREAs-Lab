@@ -10,7 +10,7 @@ from interactive_manager import create_workflow
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "../../results")
 
-MIMIC_REQUIRED_STRATEGIES = {"user", "mix"}
+MIMIC_REQUIRED_STRATEGIES = {"user", "hybrid"}
 
 DATA_SYNTHESIZED_DIR = os.path.join(os.path.dirname(__file__), "../../data/data_synthesized")
 
@@ -59,14 +59,14 @@ def parse_args():
         "--strategy_aunu",
         type=str,
         default="zero_shot",
-        choices=["zero_shot", "persona", "user", "data", "mix"],
+        choices=["zero_shot", "persona", "user", "data", "hybrid"],
         help="AUNU strategy (default: zero_shot)",
     )
     parser.add_argument(
         "--strategy_mimic",
         type=str,
         default="zero_shot",
-        choices=["zero_shot", "user", "data", "mix"],
+        choices=["zero_shot", "user", "data", "hybrid"],
         help="MIMIC strategy (default: zero_shot)",
     )
     parser.add_argument(
@@ -79,7 +79,7 @@ def parse_args():
         "--mimic_model",
         type=str,
         default=None,
-        help="Model name for the MimicUser agent (required when strategy is 'user' or 'mix')",
+        help="Model name for the MimicUser agent (required when strategy is 'user' or 'hybrid')",
     )
     parser.add_argument(
         "--persona",
@@ -131,6 +131,12 @@ def parse_args():
         default="feedback_mimic_user.jinja",
         help="Filename of the MimicUser feedback Jinja2 template (relative to prompts/agents/mimic_user/)",
     )
+    parser.add_argument(
+        "--zero_shot_results_path",
+        type=str,
+        default=None,
+        help="Path to an existing zero_shot output.json to reuse instead of rerunning zero-shot (only used with --strategy_aunu user)",
+    )
     args = parser.parse_args()
 
     if args.strategy_aunu in MIMIC_REQUIRED_STRATEGIES and args.mimic_model is None:
@@ -157,12 +163,48 @@ def build_args_dict(args) -> dict:
     return settings
 
 
+def load_zero_shot_seed(results_path: str, persona_id: int, task_id: int) -> dict | None:
+    """Return a synthetic zero_shot message built from task_requirement_final in an existing output.json."""
+    try:
+        with open(results_path) as f:
+            data = json.load(f)
+        task_data = data[str(persona_id)][f"task_{task_id}"]
+        task_requirement_final = task_data["task_requirement_final"]
+        # Find the original zero_shot message to preserve metadata
+        for msg in task_data.get("messages", []):
+            if msg.get("role") == "aunu_agent" and msg.get("action") == "zero_shot":
+                seed = dict(msg)
+                seed["output"] = task_requirement_final
+                return seed
+        # Fallback: minimal stub with no LLM cost
+        return {
+            "start_time": "", "end_time": "",
+            "role": "aunu_agent", "action": "zero_shot",
+            "input": "", "prompt_template": "zero_shot.jinja",
+            "identified_ambiguity": "",
+            "output": task_requirement_final,
+            "llm": data.get("args", {}).get("aunu_model", ""),
+            "input_tokens": 0, "output_tokens": 0, "cost": 0.0,
+        }
+    except Exception as e:
+        logging.warning(f"Could not load zero_shot seed from {results_path}: {e}")
+    return None
+
+
 def run_task(args, persona_id: int, task_id: int) -> dict:
     """Run the simulation for a single persona + task and return the result dict."""
     persona = load_persona(args.dataset, persona_id)
     args.user_instruction_init = load_user_instruction(args.dataset, persona_id, args.input_type, task_id)
     args.persona_profile = persona
     args.task_requirement_gold = load_ground_truth(args.dataset, persona_id, task_id)
+
+    zs_path = getattr(args, "zero_shot_results_path", None)
+    if zs_path and args.strategy_aunu in ("user", "data", "hybrid"):
+        args.zero_shot_seed = load_zero_shot_seed(zs_path, persona_id, task_id)
+        if args.zero_shot_seed:
+            logging.info(f"Reusing zero_shot output for persona {persona_id} task {task_id} from {zs_path}")
+    else:
+        args.zero_shot_seed = None
 
     app = create_workflow(args)
 

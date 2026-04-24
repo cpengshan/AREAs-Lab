@@ -211,6 +211,10 @@ data/data_raw/
 
 # External reference codebases
 ReqElicitBench/
+AUNUEnv/data/data_raw/**
+AUNUEnv/data/data_processed/**
+AUNUEnv/data/data_synthesized/**
+!AUNUEnv/data/**/.gitkeep
 
 # Project-specific
 uv.lock

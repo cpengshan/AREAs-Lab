@@ -209,6 +209,10 @@ __marimo__/
 # Raw data
 data/data_raw/
 
+# External reference codebases
+ReqElicitBench/
+AUNUEnv/
+
 # Project-specific
 uv.lock
 .python-version

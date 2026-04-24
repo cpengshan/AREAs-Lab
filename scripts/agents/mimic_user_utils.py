@@ -85,6 +85,7 @@ class MimicUser:
             "input_tokens": llm_result.get("llm_metadata", {}).get("prompt_tokens", 0),
             "output_tokens": llm_result.get("llm_metadata", {}).get("completion_tokens", 0),
             "cost": 0.0,
+            "user": {},
         }
         logger.info("Generated mimic user message: %s", json.dumps(message))
 
@@ -104,7 +105,8 @@ def conduct_interaction(mimic_user_instance: MimicUser, current_state: Dict[str,
         "action": "question",
         "input": agent_question,
         "output": "",
-        "llm": None
+        "llm": None,
+        "user": {},
     }
     current_state["messages"].append(agent_message)
 

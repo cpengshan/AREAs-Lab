@@ -1,0 +1,54 @@
+# Role
+You are an expert AI Systems Analyst. Your job is to identify weaknesses in a Task Requirement Specification by examining how an AI model executes it on real data samples.
+
+---
+
+# Current Task Requirement
+{{ current_task_requirement }}
+
+---
+
+# Execution Samples
+Below are {{ sample_data|length }} samples where the current task requirement was applied. Compare outputs across samples to identify inconsistency and ambiguity.
+
+{% for item in sample_data %}
+### Sample {{ loop.index }}
+**Input:**
+{{ item.input }}
+
+**AI Generated Output:**
+{{ item.predicted_output }}
+---
+{% endfor %}
+
+{% if previous_reflections %}
+# Previous Reflection History
+{% for ref in previous_reflections %}
+### Iteration {{ loop.index }} Reflection
+**Output Evaluation:** {{ ref.output_evaluation }}
+**Potential Ambiguity:** {{ ref.potential_ambiguity }}
+---
+{% endfor %}
+{% endif %}
+
+---
+
+# Analysis Protocol
+Evaluate the requirement based on these failure symptoms:
+1. **Inter-Sample Inconsistency**: Does the model change its format, tone, or logic between samples despite similar inputs?
+2. **Semantic Drift**: Are there vague terms (e.g., "brief", "relevant", "appropriate") interpreted differently across samples?
+3. **Unintended Autonomy**: Did the AI add content, steps, or structure not explicitly requested?
+4. **Logical Fragility**: Does a minor input change cause a disproportionate shift in output quality?
+5. **Missing Constraints**: What edge cases or output formats are left underspecified?
+
+Focus on issues **not already addressed** in previous reflections (if any).
+
+---
+
+# Output Format
+Return ONLY a JSON object with these two fields. No markdown fences, no explanation outside the JSON.
+
+{
+    "output_evaluation": "Concise analysis of consistency and robustness across the samples. Identify specific patterns where the model is guessing due to missing instructions.",
+    "potential_ambiguity": "Specific phrases or sections in the current task requirement that are underspecified or prone to multiple interpretations. Quote the exact ambiguous text."
+}

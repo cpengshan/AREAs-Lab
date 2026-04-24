@@ -110,7 +110,7 @@ def parse_args():
     parser.add_argument(
         "--prompt_template_user_feedback_path",
         type=str,
-        default="feedback_mimic_user.jinja",
+        default="feedback_mimic_user_v2.jinja",
         help="Filename of the MimicUser feedback template (relative to prompt_template_path)",
     )
     parser.add_argument(
@@ -122,7 +122,7 @@ def parse_args():
     parser.add_argument(
         "--aunu_template",
         type=str,
-        default="user_interaction.jinja",
+        default="user/user_interaction.jinja",
         help="Filename of the AUNU user-interaction Jinja2 template (relative to prompts/agents/aunu_agent/)",
     )
     parser.add_argument(

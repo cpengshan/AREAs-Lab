@@ -87,61 +87,97 @@ def compare(llm: LLM, template, ground_truth_units: list[str], predicted_units: 
 # Score computation (done in Python, not by the LLM)
 # ---------------------------------------------------------------------------
 
-def compute_scores(comparison: dict) -> dict:
+def compute_scores(comparison: dict) -> tuple[dict, dict]:
+    """Compute Precision, Recall, F1 from the LLM comparison alignment data.
+
+    TP/FP/FN definitions
+    --------------------
+    matched_pairs from the LLM uses the schema:
+        {"ground_truth": str, "predicted": [str, ...]}
+
+    Each ground-truth unit appears at most once in matched_pairs (enforced by
+    the prompt). A ground-truth unit is "covered" when its predicted list is
+    non-empty.
+
+    TP — unique ground-truth units covered by at least one valid match.
+         Counted at the GT level so a GT unit covered by two predicted units
+         still contributes exactly 1 TP. This prevents recall from exceeding 1.
+
+    FN — ground-truth units with no covering match (= n_gt - TP).
+
+    FP — every predicted unit that is NOT the sole "credit" for a unique GT
+         unit. Concretely: we award one predicted slot per covered GT unit
+         (the "canonical" match), so FP = n_pred - TP.  This includes:
+           • redundant extra predictions that map to an already-covered GT unit
+           • hallucinated predictions
+           • misaligned predictions
+    """
     n_gt = len(comparison.get("ground_truth_units", []))
     n_pred = len(comparison.get("predicted_units", []))
-    n_hallucinated = len(comparison.get("hallucinated_units", []))
     n_misaligned = len(comparison.get("misaligned_units", []))
     n_critical = len(comparison.get("critical_units", []))
     n_critical_missing = len(comparison.get("critical_missing", []))
     n_critical_matched = max(0, n_critical - n_critical_missing)
 
-    # Each entry in matched_pairs has one ground_truth and one or more predicted.
-    # Only count a pair as matched when predicted is non-empty (len > 0).
     matched_pairs = comparison.get("matched_pairs", [])
-    n_matched_gt = sum(1 for p in matched_pairs if len(p.get("predicted", [])) != 0)
-    
 
-    # Derive missing from what is not matched, ignoring the LLM's missing_units list
-    # which can overlap with matched_pairs (LLM double-counts).
-    # This guarantees: n_matched_gt + n_missing == n_gt.
+    # TP: one per covered ground-truth unit, regardless of how many predicted
+    # units point to it.  Each GT unit appears at most once in matched_pairs
+    # (guaranteed by the compare prompt), so we just check that its predicted
+    # list is non-empty.
+    tp = sum(1 for p in matched_pairs if len(p.get("predicted", [])) != 0)
+
+    # Derive missing from the GT units not represented in matched_pairs.
+    # We ignore the LLM's missing_units list because it can overlap with
+    # matched_pairs (the LLM sometimes double-counts).
     matched_gt_set = {p["ground_truth"] for p in matched_pairs if len(p.get("predicted", [])) != 0}
-    n_missing = sum(1 for u in comparison.get("ground_truth_units", []) if u not in matched_gt_set)
+    fn = sum(1 for u in comparison.get("ground_truth_units", []) if u not in matched_gt_set)
 
-    # Derive matched predicted units from matched_pairs to avoid LLM double-counting
-    # in hallucinated_units (LLM often lists matched units there too).
-    matched_predicted = set()
-    for p in matched_pairs:
-        for u in p.get("predicted", []):
-            matched_predicted.add(u)
-    all_predicted = comparison.get("predicted_units", [])
-    n_hallucinated = sum(1 for u in all_predicted if u not in matched_predicted)
+    # FP: total predicted units minus the one canonical slot per covered GT unit.
+    # Redundant predictions (multiple preds → same GT), hallucinations, and
+    # misaligned units all land here, which penalises bloated or noisy output.
+    fp = n_pred - tp
 
-    completeness = n_matched_gt / n_gt if n_gt > 0 else 0.0
+    # Recompute hallucinated count from first principles (the LLM-reported list
+    # may include units that were actually matched).
+    matched_predicted = {u for p in matched_pairs for u in p.get("predicted", [])}
+    n_hallucinated = sum(1 for u in comparison.get("predicted_units", []) if u not in matched_predicted)
+
+    # --- metric formulas ---
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0   # == tp / n_pred when n_pred > 0
+    recall    = tp / (tp + fn) if (tp + fn) > 0 else 0.0   # == tp / n_gt  when n_gt  > 0
+    f1        = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+    # Legacy scores kept for backward compatibility with existing result files.
+    completeness = recall  # alias: completeness == recall
     alignment = (
-        n_matched_gt / (n_matched_gt + n_misaligned)
-        if (n_matched_gt + n_misaligned) > 0
+        tp / (tp + n_misaligned)
+        if (tp + n_misaligned) > 0
         else 0.0
     )
-    faithfulness = (
-        1.0 - n_hallucinated / n_pred if n_pred > 0 else 0.0
-    )
-    constraint_preservation = (
-        n_critical_matched / n_critical if n_critical > 0 else 0.0
-    )
+    faithfulness = 1.0 - n_hallucinated / n_pred if n_pred > 0 else 0.0
+    constraint_preservation = n_critical_matched / n_critical if n_critical > 0 else 0.0
 
     counts = {
         "n_predicted_units": n_pred,
         "n_ground_truth_units": n_gt,
-        "n_matched_gt_units": n_matched_gt,
-        "n_missing_units": n_missing,
+        "n_matched_gt_units": tp,
+        "n_missing_units": fn,
         "n_hallucinated_units": n_hallucinated,
         "n_misaligned_units": n_misaligned,
         "n_critical_units": n_critical,
         "n_critical_matched": n_critical_matched,
+        # TP/FP/FN exposed for auditing
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
     }
 
     scores = {
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
+        # Legacy scores retained for backward compatibility
         "completeness": round(completeness, 4),
         "alignment": round(alignment, 4),
         "faithfulness": round(faithfulness, 4),
@@ -149,6 +185,47 @@ def compute_scores(comparison: dict) -> dict:
     }
 
     return counts, scores
+
+
+# ---------------------------------------------------------------------------
+# Self-test: one-to-many mapping, recall ≤ 1, redundancy penalises precision
+# ---------------------------------------------------------------------------
+
+def _selftest():
+    """Verify the example from the design spec:
+
+    GT:   g1, g2, g3          (3 units)
+    Pred: p1, p2, p3, p4, p5  (5 units)
+      p1 → g1 (match)
+      p2 → g1 (redundant match to the same GT unit)
+      p3 → g2 (match)
+      p4    hallucinated
+      p5    misaligned
+
+    Expected: TP=2, FN=1, FP=3 → Precision=2/5, Recall=2/3
+    """
+    comparison = {
+        "ground_truth_units": ["g1", "g2", "g3"],
+        "predicted_units":    ["p1", "p2", "p3", "p4", "p5"],
+        "matched_pairs": [
+            {"ground_truth": "g1", "predicted": ["p1", "p2"]},
+            {"ground_truth": "g2", "predicted": ["p3"]},
+            # g3 has no entry → it is missing
+        ],
+        "hallucinated_units": ["p4"],
+        "misaligned_units": [{"predicted": "p5", "ground_truth": "g3", "reason": "weakens intent"}],
+        "critical_units": [],
+        "critical_missing": [],
+    }
+    counts, scores = compute_scores(comparison)
+    assert counts["tp"] == 2,  f"Expected TP=2, got {counts['tp']}"
+    assert counts["fn"] == 1,  f"Expected FN=1, got {counts['fn']}"
+    assert counts["fp"] == 3,  f"Expected FP=3, got {counts['fp']}"
+    assert abs(scores["precision"] - round(2/5, 4)) < 1e-9, f"Precision wrong: {scores['precision']}"
+    assert abs(scores["recall"]    - round(2/3, 4)) < 1e-9, f"Recall wrong: {scores['recall']}"
+    assert scores["recall"] <= 1.0, "Recall exceeded 1"
+    assert scores["precision"] <= 1.0, "Precision exceeded 1"
+    print("Self-test passed:", counts, scores)
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,8 @@ class Message(TypedDict):
     output_tokens: int  # number of output/completion tokens generated
     cost: float         # estimated cost in USD for this LLM call
     data: dict          # action-specific structured data (e.g. parsed LLM JSON, sample_data)
+    user: dict
+    hybrid: dict
 
 
 class InteractionState(TypedDict):

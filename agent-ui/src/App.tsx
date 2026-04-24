@@ -9,14 +9,26 @@ type LoadedRun = {
   error: string | null;
 };
 
-const DEFAULT_DATASETS = ["alexfabbri_multi_news", "ccdv_arxiv-summarization", "ccdv_govreport-summarization", "ccdv_patent-classification", "ccdv_pubmed-summarization"];
+const DEFAULT_DATASETS = [
+    "HuggingFaceFW_fineweb-edu",
+    "alexfabbri_multi_news",
+    "ccdv_arxiv-summarization",
+    "ccdv_govreport-summarization",
+    "ccdv_mediasum",
+    "ccdv_patent-classification",
+    "ccdv_pubmed-summarization",
+    "kritsadaK_EDGAR-CORPUS-Financial-Summarization",
+    "rohitsaxena_MovieSum",
+    "santoshtyss_uk_legislation",
+    "starmpcc_Asclepius-Synthetic-Clinical-Notes",
+    "thu-coai_esconv"
+];
 const DEFAULT_STRATEGIES = ["zero_shot", "persona", "user", "data", "hybrid"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 const METRIC_KEYS = [
-  "completeness",
-  "alignment",
-  "faithfulness",
-  "constraint_preservation",
+  "precision",
+  "recall",
+  "f1",
 ] as const;
 
 type MetricKey = (typeof METRIC_KEYS)[number];
@@ -81,10 +93,9 @@ function buildMatchMap(evalTask: any) {
 
 function getRunAverageScores(run: LoadedRun) {
   const values: Record<MetricKey, number[]> = {
-    completeness: [],
-    alignment: [],
-    faithfulness: [],
-    constraint_preservation: [],
+    precision: [],
+    recall: [],
+    f1: [],
   };
 
   const evalJson = run.evalJson || {};
@@ -107,10 +118,9 @@ function getRunAverageScores(run: LoadedRun) {
   }
 
   return {
-    completeness: avg(values.completeness),
-    alignment: avg(values.alignment),
-    faithfulness: avg(values.faithfulness),
-    constraint_preservation: avg(values.constraint_preservation),
+    precision: avg(values.precision),
+    recall: avg(values.recall),
+    f1: avg(values.f1),
   };
 }
 
@@ -405,16 +415,13 @@ function SelectedPairMetricsPanel({
                 Experiment
               </th>
               <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>
-                Completeness
+                Precision
               </th>
               <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>
-                Alignment
+                Recall
               </th>
               <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>
-                Faithfulness
-              </th>
-              <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>
-                Constraint
+                F1
               </th>
             </tr>
           </thead>
@@ -426,16 +433,13 @@ function SelectedPairMetricsPanel({
                   <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{run.strategy}</td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{run.experimentId}</td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-                    {formatScore(scores.completeness)}
+                    {formatScore(scores.precision)}
                   </td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-                    {formatScore(scores.alignment)}
+                    {formatScore(scores.recall)}
                   </td>
                   <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-                    {formatScore(scores.faithfulness)}
-                  </td>
-                  <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-                    {formatScore(scores.constraint_preservation)}
+                    {formatScore(scores.f1)}
                   </td>
                 </tr>
               );
@@ -883,10 +887,9 @@ export default function App() {
                 <tr style={{ background: "#f6f8fa" }}>
                   <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Strategy</th>
                   <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Experiment</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Completeness</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Alignment</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Faithfulness</th>
-                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Constraint</th>
+                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Precision</th>
+                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg Recall</th>
+                  <th style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #ddd" }}>Avg F1</th>
                 </tr>
               </thead>
               <tbody>
@@ -896,12 +899,9 @@ export default function App() {
                     <tr key={`${run.strategy}-${run.experimentId}`}>
                       <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{run.strategy}</td>
                       <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{run.experimentId}</td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.completeness)}</td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.alignment)}</td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.faithfulness)}</td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>
-                        {formatScore(avgScores.constraint_preservation)}
-                      </td>
+                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.precision)}</td>
+                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.recall)}</td>
+                      <td style={{ padding: 10, borderBottom: "1px solid #eee" }}>{formatScore(avgScores.f1)}</td>
                     </tr>
                   );
                 })}

@@ -58,9 +58,9 @@ to uncover the most important underlying detail needed to fulfill their needs pr
 {% endif %}
 
 ---
-
-# Output Format
-Output ONLY the question you want to ask the user.
-- One question only — no preamble, no explanation, no follow-up suggestions.
-- Keep it concise and conversational.
-- Do NOT start with "I" or refer to yourself.
+# Output Requirement
+Return a JSON object. You must think step-by-step in the `analysis_reasoning` field before providing the final question to user. Return ONLY the JSON.
+{
+    "identified_ambiguity": "A brief description of the specific unclear or missing element.",
+    "question": "Your single, focused, high-impact question to the user."
+}

@@ -41,7 +41,7 @@ def create_workflow(args):
             model=args.mimic_model,
             template_path=getattr(args, "mimic_template_path",
                                   os.path.join(os.path.dirname(__file__), "../../prompts/agents/mimic_user",
-                                               getattr(args, "mimic_template", "feedback_mimic_user.jinja"))),
+                                               getattr(args, "mimic_template", "feedback_mimic_user_v2.jinja"))),
         )
         workflow.add_node("mimic_user", mimic.respond)
 

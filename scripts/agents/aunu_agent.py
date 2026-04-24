@@ -27,7 +27,7 @@ PROMPT_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "../../prompts/age
 class AUNUAgent:
     def __init__(self, strategy: str, model: str, user_instruction_init: str,
                  dataset: str = None, max_turns: int = 5, persona: str = None,
-                 user_interaction_template: str = "user_interaction.jinja",
+                 user_interaction_template: str = "user/user_interaction_unsupported.jinja",
                  zero_shot_seed: dict = None):
         self.strategy = strategy
         self.model_name = model
@@ -82,7 +82,7 @@ class AUNUAgent:
         """Apply current task requirement to one data row; return {input, predicted_output}."""
         input_col = self.dataset.attrs.get("input_col", row.index[0])
         input_text = str(row[input_col])
-        execute_template = self.env.get_template("data_interaction_execute.jinja")
+        execute_template = self.env.get_template("data/data_interaction_execute.jinja")
         prompt = execute_template.render(
             task_requirement=self.task_requirement_curr,
             input=input_text,
@@ -98,16 +98,28 @@ class AUNUAgent:
 
     def data_interaction(self, state: InteractionState, n_samples: int = 3):
         """
-        Sample n_samples rows, execute the current task requirement on each,
-        then ask the LLM to identify gaps and output a refined task requirement.
+        One iteration of data-driven requirement refinement:
+          1. Sample n_samples rows and execute the current task requirement on each.
+          2. Reflection LLM call: identify gaps → {output_evaluation, potential_ambiguity}.
+          3. Rewrite LLM call: produce an improved requirement as plain text.
         """
         messages = state["messages"]
         current_iteration = sum(
             1 for m in messages if m["role"] == self.role and m["action"] == "data_interaction"
         )
         max_iterations = state.get("max_iterations", self.max_turns)
+        iterations_remaining = max_iterations - current_iteration - 1
 
-        # Sample rows
+        # Collect previous reflections for cumulative context
+        previous_reflections = [
+            {"output_evaluation": m["data"]["output_evaluation"],
+             "potential_ambiguity": m["identified_ambiguity"]}
+            for m in messages
+            if m["role"] == self.role and m["action"] == "data_interaction"
+            and m.get("data", {}).get("output_evaluation")
+        ]
+
+        # --- Step 1: Sample and execute ---
         sample_rows = self.dataset.sample(n=min(n_samples, len(self.dataset)), random_state=None)
 
         total_input_tokens = 0
@@ -121,51 +133,86 @@ class AUNUAgent:
             total_cost += result.pop("_cost")
             sample_data.append(result)
 
-        # Reflect and refine task requirement
-        reflect_template = self.env.get_template("data_interaction.jinja")
+        # --- Step 2: Reflection call — small JSON only ---
+        reflect_template = self.env.get_template("data/data_interaction_reflect_v1.jinja")
         reflect_prompt = reflect_template.render(
             current_task_requirement=self.task_requirement_curr,
             sample_data=sample_data,
-            max_iterations=max_iterations,
-            current_iteration=current_iteration,
+            previous_reflections=previous_reflections,
         )
 
-        start_time = datetime.now(timezone.utc).isoformat()
+        reflect_start = datetime.now(timezone.utc).isoformat()
         reflect_response = self.llm.generate(reflect_prompt, max_tokens=12288)
-        end_time = datetime.now(timezone.utc).isoformat()
+        reflect_end = datetime.now(timezone.utc).isoformat()
 
         total_input_tokens += reflect_response.get("input_tokens", 0)
         total_output_tokens += reflect_response.get("output_tokens", 0)
         total_cost += reflect_response.get("cost", 0.0)
 
         try:
-            parsed = _parse_json_output(reflect_response["output"])
-            improved_requirement = parsed.get("improved_task_requirement", reflect_response["output"])
-            potential_ambiguity = parsed.get("potential_ambiguity", "")
+            reflection = _parse_json_output(reflect_response["output"])
+            output_evaluation = reflection.get("output_evaluation", "")
+            potential_ambiguity = reflection.get("potential_ambiguity", "")
         except (json.JSONDecodeError, TypeError):
-            parsed = {}
-            improved_requirement = reflect_response["output"]
+            output_evaluation = reflect_response["output"]
             potential_ambiguity = ""
 
+        # --- Step 3: Rewrite call — plain text requirement ---
+        rewrite_template = self.env.get_template("data/data_interaction_rewrite.jinja")
+        rewrite_prompt = rewrite_template.render(
+            current_task_requirement=self.task_requirement_curr,
+            output_evaluation=output_evaluation,
+            potential_ambiguity=potential_ambiguity,
+            previous_reflections=previous_reflections,
+            iterations_remaining=iterations_remaining,
+        )
+
+        rewrite_start = datetime.now(timezone.utc).isoformat()
+        rewrite_response = self.llm.generate(rewrite_prompt, max_tokens=12288)
+        rewrite_end = datetime.now(timezone.utc).isoformat()
+
+        total_input_tokens += rewrite_response.get("input_tokens", 0)
+        total_output_tokens += rewrite_response.get("output_tokens", 0)
+        total_cost += rewrite_response.get("cost", 0.0)
+
+        improved_requirement = rewrite_response["output"].strip()
         self.task_requirement_curr = improved_requirement
 
         message = {
-            "start_time": start_time,
-            "end_time": end_time,
+            "start_time": reflect_start,
+            "end_time": rewrite_end,
             "role": self.role,
             "action": "data_interaction",
-            "input": reflect_prompt,
-            "prompt_template": "data_interaction.jinja",
             "identified_ambiguity": potential_ambiguity,
             "output": improved_requirement,
             "llm": self.model_name,
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
             "cost": total_cost,
+            "user": {},
+            "hybrid": {},
             "data": {
                 "sample_data": sample_data,
-                "output_evaluation": parsed.get("output_evaluation", ""),
-                "refinement_strategy": parsed.get("refinement_strategy", ""),
+                "reflection": {
+                    "prompt": reflect_prompt,
+                    "raw_output": reflect_response["output"],
+                    "output_evaluation": output_evaluation,
+                    "potential_ambiguity": potential_ambiguity,
+                    "start_time": reflect_start,
+                    "end_time": reflect_end,
+                    "input_tokens": reflect_response.get("input_tokens", 0),
+                    "output_tokens": reflect_response.get("output_tokens", 0),
+                    "cost": reflect_response.get("cost", 0.0),
+                },
+                "rewrite": {
+                    "prompt": rewrite_prompt,
+                    "output": improved_requirement,
+                    "start_time": rewrite_start,
+                    "end_time": rewrite_end,
+                    "input_tokens": rewrite_response.get("input_tokens", 0),
+                    "output_tokens": rewrite_response.get("output_tokens", 0),
+                    "cost": rewrite_response.get("cost", 0.0),
+                },
             },
         }
         logger.info(json.dumps(message))
@@ -209,9 +256,12 @@ class AUNUAgent:
             parsed = _parse_json_output(response["output"])
             question = parsed.get("question", response["output"])
             identified_ambiguity = parsed.get("identified_ambiguity", "")
+            unnecessary_requirement = parsed.get("unnecessary_requirement", "")
         except (json.JSONDecodeError, TypeError):
+            parsed = {}
             question = response["output"]
             identified_ambiguity = ""
+            unnecessary_requirement = ""
 
         message = {
             "start_time": start_time,
@@ -226,6 +276,8 @@ class AUNUAgent:
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
             "cost": response.get("cost", 0.0),
+            "user": parsed,
+            "hybrid": {},
         }
         logger.info(json.dumps(message))
         return message
@@ -250,6 +302,8 @@ class AUNUAgent:
             "input_tokens": 0,
             "output_tokens": 0,
             "cost": 0.0,
+            "user": {},
+            "hybrid": {},
         }
         logger.info(json.dumps(message))
         return message
@@ -276,6 +330,8 @@ class AUNUAgent:
             "input_tokens": 0,
             "output_tokens": 0,
             "cost": 0.0,
+            "user": {},
+            "hybrid": {},
         }
         logger.info(json.dumps(message))
         return message
@@ -293,14 +349,14 @@ class AUNUAgent:
             "",
         )
 
-        merge_template = self.env.get_template("merge_zero_shot_data.jinja")
+        merge_template = self.env.get_template("data/merge_zero_shot_data.jinja")
         merge_prompt = merge_template.render(
             user_instruction=user_instruction,
             zero_shot_requirement=zero_shot_requirement,
             data_interaction_requirement=self.task_requirement_curr,
         )
         merge_start = datetime.now(timezone.utc).isoformat()
-        merge_response = self.llm.generate(merge_prompt)
+        merge_response = self.llm.generate(merge_prompt, max_tokens=12288)
         merge_end = datetime.now(timezone.utc).isoformat()
 
         self.task_requirement_curr = merge_response["output"]
@@ -311,13 +367,15 @@ class AUNUAgent:
             "role": self.role,
             "action": "merge_zero_shot_data",
             "input": merge_prompt,
-            "prompt_template": "merge_zero_shot_data.jinja",
+            "prompt_template": "data/merge_zero_shot_data.jinja",
             "identified_ambiguity": "",
             "output": merge_response["output"],
             "llm": self.model_name,
             "input_tokens": merge_response.get("input_tokens", 0),
             "output_tokens": merge_response.get("output_tokens", 0),
             "cost": merge_response.get("cost", 0.0),
+            "user": {},
+            "hybrid": {},
         }
         logger.info(json.dumps(merge_message))
         return [merge_message]
@@ -328,7 +386,7 @@ class AUNUAgent:
         Called once at the end of the interaction.
         """
         messages = state["messages"]
-        template = self.env.get_template("task_requirement_prediction.jinja")
+        template = self.env.get_template("user/task_requirement_prediction.jinja")
 
         initial_task_requirement = next(
             (m["output"] for m in messages if m["role"] == "mimic_user" and m["action"] == "init"),
@@ -358,20 +416,46 @@ class AUNUAgent:
             "role": self.role,
             "action": "task_requirement_prediction",
             "input": prompt,
-            "prompt_template": "task_requirement_prediction.jinja",
+            "prompt_template": "user/task_requirement_prediction.jinja",
             "identified_ambiguity": "",
             "output": response["output"],
             "llm": self.model_name,
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
             "cost": response.get("cost", 0.0),
+            "user": {},
+            "hybrid": {},
         }
         logger.info(json.dumps(message))
         return message
 
+    @staticmethod
+    def _collect_potential_ambiguities(messages: list) -> list[dict]:
+        """
+        Walk the message log and build an ordered list of ambiguities surfaced
+        across all hybrid turns (from both data_interaction and user_interaction).
+        Each entry: {turn, source, ambiguity}.
+        """
+        ambiguity_list = []
+        turn = 1
+        for m in messages:
+            if m["role"] != "aunu_agent":
+                continue
+            if m["action"] not in ("data_interaction", "user_interaction"):
+                continue
+            pa = m.get("identified_ambiguity", "").strip()
+            if pa:
+                ambiguity_list.append({
+                    "turn": turn,
+                    "source": m["action"],
+                    "ambiguity": pa,
+                })
+            turn += 1
+        return ambiguity_list
+
     def _route(self, state: InteractionState) -> tuple[str, dict]:
         """
-        Call the router LLM to decide 'user' or 'data' for this hybrid turn.
+        Call the router LLM to decide 'user', 'data', or 'end' for this hybrid turn.
         Returns (strategy, router_message).
         """
         messages = state["messages"]
@@ -384,15 +468,22 @@ class AUNUAgent:
             (m["output"] for m in messages if m["role"] == "mimic_user" and m["action"] == "init"),
             "",
         )
+        zero_shot_requirement = next(
+            (m["output"] for m in messages if m["role"] == self.role and m["action"] == "zero_shot"),
+            "",
+        )
         chat_history = [
             m for m in messages
             if m["role"] in (self.role, "mimic_user") and m["action"] not in ("init", "zero_shot")
         ]
+        potential_ambiguity_list = self._collect_potential_ambiguities(messages)
 
-        template = self.env.get_template("hybrid_router.jinja")
+        template = self.env.get_template("hybrid/hybrid_router.jinja")
         prompt = template.render(
             user_instruction=user_instruction,
+            zero_shot_requirement=zero_shot_requirement,
             current_task_requirement=self.task_requirement_curr,
+            potential_ambiguity_list=potential_ambiguity_list,
             chat_history=chat_history,
             max_iterations=max_iterations,
             current_iteration=current_iteration,
@@ -406,7 +497,7 @@ class AUNUAgent:
             parsed = _parse_json_output(response["output"])
             strategy = parsed.get("strategy", "user")
             reasoning = parsed.get("reasoning", "")
-            if strategy not in ("user", "data"):
+            if strategy not in ("user", "data", "end"):
                 strategy = "user"
         except (json.JSONDecodeError, TypeError):
             strategy = "user"
@@ -425,17 +516,97 @@ class AUNUAgent:
             "role": self.role,
             "action": "hybrid_router",
             "input": prompt,
-            "prompt_template": "hybrid_router.jinja",
+            "prompt_template": "hybrid/hybrid_router.jinja",
             "identified_ambiguity": "",
             "output": strategy,
             "llm": self.model_name,
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
             "cost": response.get("cost", 0.0),
+            "user": {},
             "data": {"list": reasoning_list},
+            "hybrid": {
+                "reasoning": reasoning,
+                "strategy": strategy,
+                "turn": current_iteration,
+                "potential_ambiguity_list": potential_ambiguity_list,
+            },
         }
         logger.info(json.dumps(router_message))
         return strategy, router_message
+
+    def hybrid_rewrite(self, state: InteractionState, user_instruction: str) -> dict:
+        """
+        Final step of the hybrid strategy: rewrite the task requirement from scratch
+        using the zero-shot draft and all accumulated potential ambiguities.
+        This replaces task_requirement_prediction() for the hybrid strategy.
+        """
+        messages = state["messages"]
+
+        zero_shot_requirement = next(
+            (m["output"] for m in messages if m["role"] == self.role and m["action"] == "zero_shot"),
+            "",
+        )
+        potential_ambiguity_list = self._collect_potential_ambiguities(messages)
+
+        # Collect user clarifications: pairs of (aunu question, mimic_user answer)
+        user_clarifications = []
+        aunu_questions = [
+            m for m in messages
+            if m["role"] == self.role and m["action"] == "user_interaction"
+        ]
+        mimic_answers = [
+            m for m in messages
+            if m["role"] == "mimic_user" and m["action"] == "respond"
+        ]
+        for i, (q, a) in enumerate(zip(aunu_questions, mimic_answers), start=1):
+            user_clarifications.append({
+                "turn": i,
+                "question": q.get("output", ""),
+                "answer": a.get("output", ""),
+            })
+
+        rewrite_template = self.env.get_template("hybrid/hybrid_rewrite.jinja")
+        rewrite_prompt = rewrite_template.render(
+            user_instruction=user_instruction,
+            zero_shot_requirement=zero_shot_requirement,
+            potential_ambiguity_list=potential_ambiguity_list,
+            user_clarifications=user_clarifications,
+        )
+
+        start_time = datetime.now(timezone.utc).isoformat()
+        response = self.llm.generate(rewrite_prompt, max_tokens=12288)
+        end_time = datetime.now(timezone.utc).isoformat()
+
+        self.task_requirement_curr = response["output"].strip()
+
+        message = {
+            "start_time": start_time,
+            "end_time": end_time,
+            "role": self.role,
+            "action": "hybrid_rewrite",
+            "input": rewrite_prompt,
+            "prompt_template": "hybrid/hybrid_rewrite.jinja",
+            "identified_ambiguity": "",
+            "output": self.task_requirement_curr,
+            "llm": self.model_name,
+            "input_tokens": response.get("input_tokens", 0),
+            "output_tokens": response.get("output_tokens", 0),
+            "cost": response.get("cost", 0.0),
+            "user": {},
+            "data": {
+                "zero_shot_requirement": zero_shot_requirement,
+                "potential_ambiguity_list": potential_ambiguity_list,
+                "n_user_clarifications": len(user_clarifications),
+            },
+            "hybrid": {
+                "zero_shot_requirement": zero_shot_requirement,
+                "potential_ambiguity_list": potential_ambiguity_list,
+                "user_clarifications": user_clarifications,
+            },
+        }
+        logger.info(json.dumps(message))
+        return message
 
     def hybrid_interaction(self, state: InteractionState) -> list:
         """
@@ -467,7 +638,7 @@ class AUNUAgent:
         user_feedback = last_user_msg["output"] if last_user_msg else ""
 
         # Step 3: Check gaps and refine task requirement
-        check_template = self.env.get_template("hybrid_data_check.jinja")
+        check_template = self.env.get_template("hybrid/hybrid_data_check.jinja")
         check_prompt = check_template.render(
             current_task_requirement=self.task_requirement_curr,
             sample=sample_data,
@@ -492,7 +663,7 @@ class AUNUAgent:
             "role": self.role,
             "action": "hybrid_data_check",
             "input": check_prompt,
-            "prompt_template": "hybrid_data_check.jinja",
+            "prompt_template": "hybrid/hybrid_data_check.jinja",
             "identified_ambiguity": "",
             "output": check_response["output"],
             "sample_data": [sample_data],
@@ -500,6 +671,11 @@ class AUNUAgent:
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
             "cost": total_cost,
+            "user": {},
+            "hybrid": {
+                "sample_data": sample_data,
+                "user_feedback": user_feedback,
+            },
         }
         logger.info(json.dumps(check_message))
 
@@ -537,6 +713,8 @@ class AUNUAgent:
                 "input_tokens": response.get("input_tokens", 0),
                 "output_tokens": response.get("output_tokens", 0),
                 "cost": response.get("cost", 0.0),
+                "user": {},
+                "hybrid": {},
             }
             logger.info(json.dumps(message))
 
@@ -570,6 +748,8 @@ class AUNUAgent:
                 "input_tokens": response.get("input_tokens", 0),
                 "output_tokens": response.get("output_tokens", 0),
                 "cost": response.get("cost", 0.0),
+                "user": {},
+                "hybrid": {},
             }
             logger.info(json.dumps(message))
 
@@ -608,6 +788,8 @@ class AUNUAgent:
                         "input_tokens": response.get("input_tokens", 0),
                         "output_tokens": response.get("output_tokens", 0),
                         "cost": response.get("cost", 0.0),
+                        "user": {},
+                        "hybrid": {},
                     }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
@@ -656,6 +838,8 @@ class AUNUAgent:
                         "input_tokens": response.get("input_tokens", 0),
                         "output_tokens": response.get("output_tokens", 0),
                         "cost": response.get("cost", 0.0),
+                        "user": {},
+                        "hybrid": {},
                     }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
@@ -688,7 +872,10 @@ class AUNUAgent:
         elif self.strategy == "hybrid":
             new_messages = []
 
-            # Step 1: seed task_requirement_curr with a zero-shot draft
+            # Step 1: Seed task_requirement_curr with a zero-shot draft.
+            # The zero-shot output is kept as the stable foundation; the hybrid
+            # loop does NOT iteratively rewrite it — instead it accumulates
+            # potential_ambiguity entries and rewrites once at the end.
             has_zero_shot = any(m["role"] == self.role and m["action"] == "zero_shot" for m in messages)
             if not has_zero_shot:
                 if self.zero_shot_seed is not None:
@@ -714,39 +901,79 @@ class AUNUAgent:
                         "input_tokens": response.get("input_tokens", 0),
                         "output_tokens": response.get("output_tokens", 0),
                         "cost": response.get("cost", 0.0),
+                        "user": {},
+                        "hybrid": {},
                     }
                 logger.info(json.dumps(zs_message))
                 new_messages.append(zs_message)
 
-            # Count completed hybrid turns (each router decision = one turn)
+            # Count how many router turns have already completed.
             mix_turns = sum(
                 1 for m in messages if m["role"] == self.role and m["action"] == "hybrid_router"
             )
             is_complete = mix_turns >= self.max_turns
 
+            # Steps 2–4: one router → strategy → ambiguity-return cycle per graph step.
+            # The graph calls process() once per node activation, so we run exactly
+            # one router + one strategy iteration per call (LangGraph streams the loop).
             if not is_complete:
                 mix_state = {**state, "messages": messages + new_messages, "max_iterations": self.max_turns}
 
-                # Step 2: router decides which strategy to run this turn
+                # Step 2: router decides 'user', 'data', or 'end'
                 chosen_strategy, router_msg = self._route(mix_state)
                 new_messages.append(router_msg)
                 mix_state = {**mix_state, "messages": mix_state["messages"] + [router_msg]}
 
-                # Step 3: run one iteration of the chosen strategy
-                if chosen_strategy == "data":
-                    data_msg = self.data_interaction(mix_state)
-                    new_messages.append(data_msg)
+                reasoning = router_msg.get("hybrid", {}).get("reasoning", "")
+                logger.info(
+                    "[hybrid | turn %d/%d] router → strategy=%s | reasoning: %s",
+                    mix_turns + 1, self.max_turns, chosen_strategy, reasoning,
+                )
+
+                if chosen_strategy == "end":
+                    # Router decided the collected ambiguities are sufficient — skip to rewrite.
+                    is_complete = True
                 else:
-                    ui_msg = self.user_interaction(mix_state)
-                    new_messages.append(ui_msg)
+                    # Step 3: run one iteration of the chosen strategy.
+                    # potential_ambiguity is captured in message["identified_ambiguity"]
+                    # by both data_interaction and user_interaction, so it flows back
+                    # to the router automatically on the next call via _collect_potential_ambiguities.
+                    if chosen_strategy == "data":
+                        strategy_msg = self.data_interaction(mix_state)
+                    else:
+                        strategy_msg = self.user_interaction(mix_state)
+                    new_messages.append(strategy_msg)
 
-                mix_turns += 1
-                is_complete = mix_turns >= self.max_turns
+                    ambiguity = strategy_msg.get("identified_ambiguity", "").strip()
+                    output_preview = strategy_msg.get("output", "")[:120].replace("\n", " ")
+                    logger.info(
+                        "[hybrid | turn %d/%d] %s output | ambiguity: %s | output: %s%s",
+                        mix_turns + 1, self.max_turns, chosen_strategy,
+                        ambiguity or "(none)",
+                        output_preview, "…" if len(strategy_msg.get("output", "")) > 120 else "",
+                    )
 
+                    mix_turns += 1
+                    is_complete = mix_turns >= self.max_turns
+
+            # Step 6: final rewrite — integrate zero-shot draft + all accumulated ambiguities.
+            # Done once, when the loop ends (max_turns reached or router chose 'end').
             if is_complete:
-                pred_state = {"messages": messages + new_messages}
-                pred_message = self.task_requirement_prediction(pred_state)
-                new_messages.append(pred_message)
+                user_instruction = next(
+                    (m["output"] for m in (messages + new_messages)
+                     if m["role"] == "mimic_user" and m["action"] == "init"),
+                    self.task_requirement_curr,
+                )
+                rewrite_state = {"messages": messages + new_messages}
+                rewrite_msg = self.hybrid_rewrite(rewrite_state, user_instruction)
+                new_messages.append(rewrite_msg)
+
+                ambiguity_list = rewrite_msg.get("hybrid", {}).get("potential_ambiguity_list", [])
+                output_preview = rewrite_msg.get("output", "")[:120].replace("\n", " ")
+                logger.info(
+                    "[hybrid | final rewrite] %d ambiguities incorporated | output: %s…",
+                    len(ambiguity_list), output_preview,
+                )
 
             return {
                 "messages": new_messages,

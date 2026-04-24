@@ -61,6 +61,7 @@ class MimicUser:
         return {
             "feedback": parsed.get("feedback", raw_output),
             "thought": parsed.get("thought", ""),
+            "grounding": parsed.get("grounding", ""),
             "is_complete": False,
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
@@ -91,6 +92,7 @@ class MimicUser:
                 "input_tokens": 0,
                 "output_tokens": 0,
                 "cost": 0.0,
+                "user": {},
             }
             logger.info("MimicUser init message: %s", json.dumps(message))
             return {
@@ -124,6 +126,7 @@ class MimicUser:
             "input_tokens": llm_result.get("input_tokens", 0),
             "output_tokens": llm_result.get("output_tokens", 0),
             "cost": llm_result.get("cost", 0.0),
+            "user": {},
         }
         logger.info("Generated mimic user message: %s", json.dumps(message))
 

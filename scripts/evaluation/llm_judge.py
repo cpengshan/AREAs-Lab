@@ -132,7 +132,7 @@ def compute_aggregate(existing: dict) -> dict:
         return {}
 
     llm_score_keys = ["coverage", "precision", "faithfulness", "overall"]
-    count_keys = ["n_matched", "n_missing", "n_drifted", "n_hallucinated", "coverage", "precision", "f1"]
+    count_keys = ["n_matched", "n_missing", "n_drifted", "n_hallucinated", "coverage", "precision", "recall", "f1"]
 
     llm_totals = {k: [] for k in llm_score_keys}
     count_totals = {k: [] for k in count_keys}

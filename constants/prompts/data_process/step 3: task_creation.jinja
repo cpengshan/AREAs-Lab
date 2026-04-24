@@ -13,36 +13,52 @@ The following instances represent the raw data schema and the specific "noise" o
 ---
 
 ## Objective 1: High-Fidelity Task Generation
-Generate a comprehensive **Task Requirement** (minimum 300 words). This document must act as a "System Prompt" or "Job Description" that enables an AI to perform a high-value operation on the dataset, meticulously calibrated to the technical and cognitive constraints of the Persona.
+Generate two (2) distinct **Task Requirements**. These documents act as "System Prompts" that enable an AI to perform high-value operations on the dataset, meticulously calibrated to the persona's constraints.
 
-**The task must adhere to these Logic Dimensions:**
-* **Reasoning Depth:** Apply specific industry frameworks (e.g., SWOT, First Principles, Regulatory Compliance) to the data.
-* **Persona-Centric Transformation:** Convert raw fields into narrative-driven or decision-ready formats.
-* **Difficulty Calibration:** Target a **{{ difficulty | default('Medium') }}** complexity level. Avoid "surface-level" summaries; require the AI to infer intent, identify contradictions, or predict outcomes based on the data.
+**Logic Dimensions for Task Synthesis:**
+* **Reasoning Depth:** Integrate industry-specific frameworks (e.g., SWOT, First Principles, Regulatory Compliance).
+* **Persona-Centric Transformation:** Convert raw data fields into narrative-driven or decision-ready formats.
+* **Column Selection:** Do not feel obligated to use the entire schema. Focus on the most impactful columns for the specific use case.
+* **Complexity Split:** * * **Task A (Medium):** Requires interpretive reasoning. The AI must move beyond surface-level summarization to infer intent, identify conflicting data points, or predict a singular outcome. It requires the AI to apply the persona’s "expert lens" to prioritize which data columns truly matter for a specific decision.
+    * **Task B (High):** Requires multi-dimensional synthesis and adversarial reasoning. The AI must cross-reference disparate data sources to resolve systemic contradictions, simulate secondary effects of specific decisions, and formulate a high-stakes strategy. 
 
-**The generated Task Requirement must be structured as follows:**
-1. **Strategic Intent:** Define the mission-critical objective and the professional stakes for the persona.
-2. **Data Weighting & Pre-processing:** Define which fields are "ground truth" vs "noise" and how to handle null/conflicting data.
-3. **Execution Steps (Chain-of-Thought):** A step-by-step methodology the AI must follow to process the input accurately.
-4. **Tone & Style:** Define vocabulary constraints, reading level, and expert-to-expert nuances.
-5. **Content Requirements:** List essential arguments, KPIs, or data points that must appear in the final output.
-6. **Constraint Checklist:** A "What NOT to do" list, covering hallucinations and prohibited jargon.
-7. **Evaluation Rubric:** 2–3 specific criteria to judge if the AI's output meets the persona's standards.
+**Each Task Requirement must include:**
+1. **Strategic Intent:** The mission-critical objective and professional stakes.
+2. **Data Weighting:** Instructions on "ground truth" vs. "noise" and handling nulls.
+3. **Execution Steps (CoT):** A step-by-step methodology for the AI.
+4. **Tone & Style:** Vocabulary constraints and expert-to-expert nuances.
+5. **Content Requirements:** Essential KPIs or arguments that must be present.
+6. **Constraint Checklist:** "What NOT to do" (e.g., prohibited jargon, specific hallucinations).
+7. **Evaluation Rubric:** 2–3 criteria for success.
+8. **Difficulty Level:** Labeled clearly as "Medium" or "High".
 
 ---
 
 ## Objective 2: Implementation Summaries
-Imagine you are describing this system to a lead developer over coffee. Provide two summaries using a **casual, verbal, peer-to-peer tone**.
-
-1. **The "Elevator Pitch" (~30 words):** Quick and punchy.
-2. **The "Deep Dive" (~100 words):** Explaining the technical challenge and the intended "aha!" moment for the user.
+Provide two informal summaries for each task, as if speaking to a technical peer.
+1. **The Elevator Pitch:** (~30 words) Punchy and goal-oriented.
+2. **The Deep Dive:** (~100 words) Explaining the technical "aha!" moment.
 
 ---
 
 ## Output Format
-Please output the result strictly in JSON format, the output should only contain the following three keys:
-{
-    "task_requirement": "[Insert the structured, 300+ word instructions here]",
-    "elevator_pitch_summary": "[Casual, brief human-to-human summary]",
-    "deep_dive_summary": "[More detailed, casual human-to-human summary]"
-}
+Output the result strictly in JSON. The `tasks` key should contain a list of two dictionary objects:
+
+[
+    {
+        "task_id": 1,
+        "difficulty": "Medium",
+        "task_name": "[A brief task name]",
+        "task_requirement": "[Insert 300+ word structured instructions]",
+        "elevator_pitch_summary": "[Casual summary]",
+        "deep_dive_summary": "[Technical casual summary]"
+    },
+    {
+        "task_id": 2,
+        "difficulty": "High",
+        "task_name": "[A brief task name]",
+        "task_requirement": "[Insert 300+ word structured instructions]",
+        "elevator_pitch_summary": "[Casual summary]",
+        "deep_dive_summary": "[Technical casual summary]"
+    }
+]

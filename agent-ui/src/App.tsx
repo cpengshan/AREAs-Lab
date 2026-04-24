@@ -660,7 +660,7 @@ function StrategyRunPanel({
 }
 
 export default function App() {
-  const [baseUrl, setBaseUrl] = useState("/results");
+  const [baseUrl, setBaseUrl] = useState("/agent/results");
   const [dataset, setDataset] = useState(DEFAULT_DATASETS[0]);
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
     "zero_shot",

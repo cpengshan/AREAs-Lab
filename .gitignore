@@ -228,6 +228,8 @@ CLAUDE.md
 
 # Results
 results
+agent/logs/
+agent/results/
 
 # Cache
 .llm_cache

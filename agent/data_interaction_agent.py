@@ -40,7 +40,7 @@ from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
 logger = logging.getLogger(__name__)
 
 _PROMPTS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "prompts/agents/aunu_agent")
+    os.path.join(os.path.dirname(__file__), "prompts")
 )
 _ZERO_SHOT_TEMPLATE  = os.path.join(_PROMPTS_DIR, "zero_shot.jinja")
 _EXECUTE_TEMPLATE    = os.path.join(_PROMPTS_DIR, "data/data_interaction_execute.jinja")
@@ -296,7 +296,7 @@ class DataInteractionAgent:
             Trajectory log dict from env.get_trajectory_log(), augmented with
             the full agent message log under the key 'agent_messages'.
         """
-        from AUNUEnv.aunu_env.users.mimic_user import MimicUser
+        from AUNUEnv.aunu_env.users import MimicUser
         user = MimicUser(model_name=self.model_name)
         env.reset(task, user)
         self._env = env

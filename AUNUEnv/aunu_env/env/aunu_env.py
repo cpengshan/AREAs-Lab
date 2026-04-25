@@ -25,7 +25,7 @@ _DATA_RAW_ROOT = os.path.abspath(
 )
 
 from ..dataset.schema import TaskInstance
-from ..users.mimic_user import MimicUser
+from ..users import MimicUser
 from ..evaluator.atomic_evaluator import AtomicEvaluator
 from .actions import (
     ACTION_ASK_USER, ACTION_INSPECT_DATA,
@@ -215,9 +215,13 @@ class AUNUEnv:
             "turn": turn_idx,
             "timestamp": responded_at,
             "thought": user_result.get("thought", ""),
+            "grounding": user_result.get("grounding", ""),
         })
 
-        return response, cost, {"user_thought": user_result.get("thought", "")}
+        return response, cost, {
+            "user_thought": user_result.get("thought", ""),
+            "user_grounding": user_result.get("grounding", ""),
+        }
 
     def _handle_inspect_data(self, action: dict) -> tuple[str, float, dict]:
         s = self._state

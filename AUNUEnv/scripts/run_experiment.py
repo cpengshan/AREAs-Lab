@@ -52,7 +52,7 @@ from aunu_env.dataset.loader import load_dataset
 from aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
 from aunu_env.evaluator.metrics import aggregate_results
 from aunu_env.env.aunu_env import AUNUEnv
-from aunu_env.users.mimic_user import MimicUser
+from aunu_env.users import MimicUser
 
 logger = logging.getLogger(__name__)
 

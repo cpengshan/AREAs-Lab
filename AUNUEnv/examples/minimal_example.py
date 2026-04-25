@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from aunu_env.dataset.schema import PersonaInfo, TaskInstance
 from aunu_env.env.aunu_env import AUNUEnv
 from aunu_env.env.actions import finish, propose_requirement_update, ask_user
-from aunu_env.users.mimic_user import MimicUser
+from aunu_env.users import MimicUser
 from aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
 
 

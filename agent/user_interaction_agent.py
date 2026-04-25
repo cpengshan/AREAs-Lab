@@ -42,7 +42,7 @@ from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
 logger = logging.getLogger(__name__)
 
 _PROMPTS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "prompts/agents/aunu_agent")
+    os.path.join(os.path.dirname(__file__), "prompts")
 )
 _ZERO_SHOT_TEMPLATE = os.path.join(_PROMPTS_DIR, "zero_shot.jinja")
 _USER_INTERACT_TEMPLATE = os.path.join(_PROMPTS_DIR, "user/user_interaction.jinja")
@@ -179,9 +179,11 @@ class UserInteractionAgent:
                 "role": "mimic_user",
                 "action": "respond",
                 "input": question,
-                "prompt_template": "passive_user.jinja",
+                "prompt_template": "feedback_mimic_user_v2.jinja",
                 "identified_ambiguity": "",
                 "output": user_response,
+                "thought": info.get("user_thought", ""),
+                "grounding": info.get("user_grounding", ""),
                 "llm": "",
                 "input_tokens": 0,
                 "output_tokens": 0,
@@ -201,6 +203,7 @@ class UserInteractionAgent:
                 "input": question,
                 "output": user_response,
                 "thought": info.get("user_thought", ""),
+                "grounding": info.get("user_grounding", ""),
             })
 
             next_turn = turn + 1

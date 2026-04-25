@@ -51,7 +51,7 @@ from AUNUEnv.aunu_env.dataset.loader import load_dataset
 from AUNUEnv.aunu_env.env.aunu_env import AUNUEnv
 from AUNUEnv.aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
 from AUNUEnv.aunu_env.evaluator.metrics import aggregate_results
-from AUNUEnv.aunu_env.users.mimic_user import MimicUser
+from AUNUEnv.aunu_env.users import MimicUser
 
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent

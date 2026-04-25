@@ -163,7 +163,9 @@ class UserInteractionAgent:
             logger.info(f"[UserInteraction] Turn {turn}: {question[:80]}")
 
             # Send question to MIMIC user via env
-            obs, _, done, info = env.step(ask_user(question))
+            env_response_time = datetime.now(timezone.utc).isoformat()
+            obs, reward, done, info = env.step(ask_user(question))
+            env_response_end_time = datetime.now(timezone.utc).isoformat()
             user_response = obs.get("last_response", "")
 
             messages.append(_make_msg(
@@ -172,8 +174,8 @@ class UserInteractionAgent:
                 self.model_name, result,
             ))
             messages.append({
-                "start_time": end,
-                "end_time": end,
+                "start_time": env_response_time,
+                "end_time": env_response_end_time,
                 "role": "mimic_user",
                 "action": "respond",
                 "input": question,
@@ -184,6 +186,21 @@ class UserInteractionAgent:
                 "input_tokens": 0,
                 "output_tokens": 0,
                 "cost": info.get("cost", 0.0),
+                "env_response": {
+                    "obs": obs,
+                    "reward": reward,
+                    "done": done,
+                    "info": info,
+                },
+            })
+            messages.append({
+                "start_time": env_response_time,
+                "end_time": env_response_end_time,
+                "role": "mimic_user_feedback",
+                "action": "feedback",
+                "input": question,
+                "output": user_response,
+                "thought": info.get("user_thought", ""),
             })
 
             next_turn = turn + 1

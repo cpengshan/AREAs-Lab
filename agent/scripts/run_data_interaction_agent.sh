@@ -8,24 +8,30 @@
 
 REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
-CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/data_only.yaml"
+CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_TURNS=3                                        # data-refinement rounds
+MAX_TURNS=2                                        # data-refinement rounds
+MAX_STEPS=15
+OUTPUT_DIR="${REPO_ROOT}/results/data_interaction"
+AGENT_MODEL="gpt-4.1"
+AGENT_MODEL_TEMPERATURE=0.7
 
-# Datasets to run — comment out any you want to skip
+# Datasets to run — format: "data_home_dir:dataset_name"
+# data_home_dir: folder containing the synthesized_output.json for that dataset
+# dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    "alexfabbri/multi_news"
-    # "ccdv/arxiv-summarization"
-    # "ccdv/govreport-summarization"
-    # "ccdv/mediasum"
-    # "ccdv/patent-classification"
-    # "ccdv/pubmed-summarization"
-    # "kritsadaK/EDGAR-CORPUS-Financial-Summarization"
-    # "rohitsaxena/MovieSum"
-    # "santoshtyss/uk_legislation"
-    # "HuggingFaceFW/fineweb-edu"
-    # "starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    # "thu-coai/esconv"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/data_interaction"
@@ -38,10 +44,13 @@ LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
 
 echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
 
-for DATASET in "${DATASETS[@]}"; do
+for ENTRY in "${DATASETS[@]}"; do
+  DATA_DIR="${ENTRY%%:*}"
+  DATASET="${ENTRY##*:}"
+
   PERSONAS=$(python3 - <<PYEOF
 import json, sys
-path = "${REPO_ROOT}/AUNUEnv/data/data_synthesized/${DATASET}/synthesized_output.json"
+path = "${DATA_DIR}/synthesized_output.json"
 try:
     with open(path) as f:
         d = json.load(f)
@@ -68,6 +77,9 @@ PYEOF
     --persona $PERSONAS \
     --input_type "$INPUT_TYPE" \
     --max_turns "$MAX_TURNS" \
+    --max_steps "$MAX_STEPS" \
+    --output_dir "$OUTPUT_DIR" \
+    --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE"
 
 done

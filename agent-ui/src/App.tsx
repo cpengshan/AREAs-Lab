@@ -322,6 +322,96 @@ function MessageView({ messages }: { messages: any[] }) {
   );
 }
 
+function ConversationHistoryView({ history }: { history: any[] }) {
+  if (!history || history.length === 0) return <div style={{ color: "#666" }}>No conversation history.</div>;
+  return (
+    <div style={{ maxHeight: 520, overflow: "auto", border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
+      {history.map((entry: any, idx: number) => {
+        const isAgent = entry.role === "agent";
+        return (
+          <div
+            key={idx}
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              flexDirection: isAgent ? "row-reverse" : "row",
+              gap: 8,
+            }}
+          >
+            <div style={{ flex: "0 0 auto", fontSize: 11, fontWeight: 700, color: isAgent ? "#2563eb" : "#16a34a", paddingTop: 4, minWidth: 60, textAlign: isAgent ? "right" : "left" }}>
+              {isAgent ? "Agent" : "User"}
+              <div style={{ fontWeight: 400, color: "#999" }}>T{entry.turn}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                whiteSpace: "pre-wrap", lineHeight: 1.5, padding: "10px 12px", borderRadius: 10, fontSize: 14,
+                background: isAgent ? "#eff6ff" : "#f0fdf4",
+                border: isAgent ? "1px solid #bfdbfe" : "1px solid #bbf7d0",
+              }}>
+                {entry.content}
+              </div>
+              {entry.thought && (
+                <div style={{ marginTop: 4, fontSize: 12, color: "#888", fontStyle: "italic", paddingLeft: 4 }}>
+                  💭 {entry.thought}
+                </div>
+              )}
+              {entry.timestamp && (
+                <div style={{ marginTop: 2, fontSize: 11, color: "#bbb", paddingLeft: 4 }}>{entry.timestamp}</div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DataInspectionHistoryView({ history }: { history: any[] }) {
+  const [openIdx, setOpenIdx] = React.useState<number | null>(null);
+  if (!history || history.length === 0) return <div style={{ color: "#666" }}>No data inspection history.</div>;
+  return (
+    <div style={{ maxHeight: 560, overflow: "auto", border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
+      {history.map((entry: any, idx: number) => (
+        <div key={idx} style={{ marginBottom: 12, border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <div
+            onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f6f8fa", cursor: "pointer", userSelect: "none" }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 14 }}>
+              Inspection #{entry.inspection_idx} · Step {entry.step} · {entry.n_samples} sample{entry.n_samples !== 1 ? "s" : ""}
+            </div>
+            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <div style={{ fontSize: 12, color: "#666" }}>
+                rows: [{(entry.row_indices || []).join(", ")}]
+              </div>
+              {entry.query && <div style={{ fontSize: 12, color: "#2563eb" }}>"{entry.query}"</div>}
+              <div style={{ fontSize: 12, color: "#999" }}>{openIdx === idx ? "▲" : "▼"}</div>
+            </div>
+          </div>
+          {openIdx === idx && (
+            <div style={{ padding: 14, background: "white" }}>
+              {entry.timestamp && <div style={{ fontSize: 11, color: "#bbb", marginBottom: 8 }}>{entry.timestamp}</div>}
+              {(entry.samples || []).map((sample: any, si: number) => (
+                <div key={si} style={{ marginBottom: 10, padding: 10, background: "#fafafa", border: "1px solid #eee", borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 6 }}>
+                    Row {sample._row_idx ?? si}
+                  </div>
+                  {Object.entries(sample).filter(([k]) => k !== "_row_idx").map(([k, v]) => (
+                    <div key={k} style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#444" }}>{k}: </span>
+                      <span style={{ fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{String(v).slice(0, 400)}{String(v).length > 400 ? "…" : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MatchedPairsView({ pairs }: { pairs: any[] }) {
   return (
     <div
@@ -595,6 +685,8 @@ function StrategyRunPanel({
   const evalTask = run.evalJson?.[personaId]?.[taskId];
   const messages = outputTask?.messages || [];
   const counts = evalTask?.counts || {};
+  const conversationHistory = outputTask?.conversation_history || [];
+  const dataInspectionHistory = outputTask?.data_inspection_history || [];
 
   const predictedRequirement =
     messages.filter((m: any) => m.role === "mimic_user").slice(-1)[0]?.output ||
@@ -643,6 +735,20 @@ function StrategyRunPanel({
             <h3 style={{ marginTop: 0 }}>Conversation trajectory</h3>
             <MessageView messages={messages} />
           </div>
+
+          {conversationHistory.length > 0 && (
+            <div style={panelStyle()}>
+              <h3 style={{ marginTop: 0 }}>Conversation history</h3>
+              <ConversationHistoryView history={conversationHistory} />
+            </div>
+          )}
+
+          {dataInspectionHistory.length > 0 && (
+            <div style={panelStyle()}>
+              <h3 style={{ marginTop: 0 }}>Data inspection history</h3>
+              <DataInspectionHistoryView history={dataInspectionHistory} />
+            </div>
+          )}
 
           <div style={panelStyle()}>
             <h3 style={{ marginTop: 0 }}>Matched pairs</h3>

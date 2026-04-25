@@ -240,7 +240,7 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         "cost": <float>
       }
     """
-    return {
+    result = {
         "messages": log.get("agent_messages", []),
         "is_complete": not log.get("error"),
         "task_requirement_final": log.get("final_requirement", ""),
@@ -253,6 +253,21 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         "ground_truth": task.task_requirement,
         "cost": round(log.get("total_cost", 0.0), 6),
     }
+    if args.strategy == "user_interaction" and log.get("conversation_history"):
+        result["conversation_history"] = [
+            {"role": e["role"], "turn": e["turn"], "timestamp": e.get("timestamp", ""),
+             "content": e["content"], "thought": e.get("thought", "")}
+            for e in log["conversation_history"]
+        ]
+    if args.strategy == "data_interaction" and log.get("data_inspection_history"):
+        result["data_inspection_history"] = [
+            {"inspection_idx": e["inspection_idx"], "timestamp": e.get("timestamp", ""),
+             "step": e["step"], "query": e.get("query", ""),
+             "n_samples": e["n_samples"], "row_indices": e["row_indices"],
+             "input_col": e.get("input_col", ""), "samples": e["samples"]}
+            for e in log["data_inspection_history"]
+        ]
+    return result
 
 
 def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str) -> dict:

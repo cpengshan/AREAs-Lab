@@ -213,7 +213,7 @@ data/data_raw/
 ReqElicitBench/
 AUNUEnv/data/data_raw/**
 AUNUEnv/data/data_processed/**
-AUNUEnv/data/data_synthesized/**
+# AUNUEnv/data/data_synthesized/**
 !AUNUEnv/data/**/.gitkeep
 
 # Project-specific

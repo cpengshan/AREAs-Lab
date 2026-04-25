@@ -240,3 +240,9 @@ agent/results/
 # .DS_Store
 .DS_Store
 **/ .DS_Store
+
+# Others
+scripts/data_process/prev
+scratchs
+imgs
+.vscode

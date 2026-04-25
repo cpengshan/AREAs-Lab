@@ -27,6 +27,8 @@ AUNUEnv evaluates how an agent transforms an underspecified user request into a 
 AUNUEnv/
   aunu_env/                        # Environment package (env primitives only)
     config.py                      # AUNUEnvConfig dataclass
+    configs/
+      default.yaml                 # Model & env config — edit this to change models
     dataset/
       schema.py                    # PersonaInfo, TaskInstance dataclasses
       loader.py                    # load_dataset() — reads synthesized_output.json
@@ -39,17 +41,20 @@ AUNUEnv/
       prompts/
         passive_user.jinja         # Prompt for passive confirmation mode
         persona_user.jinja         # Prompt for persona-conditioned mode
+        feedback_mimic_user.jinja  # Feedback prompt (current)
+        feedback_mimic_user_v1.jinja
+        feedback_mimic_user_v2.jinja
     evaluator/
       atomic_evaluator.py          # 3-stage LLM evaluation pipeline
       metrics.py                   # compute_scores(), aggregate_results()
+      prompt/
+        LLM_judge_decompose.jinja  # Decompose requirement → atomic units
+        LLM_judge_compare.jinja    # Align predicted vs gold units
+        LLM_judge.jinja
     utils/
-      llm.py                       # call_llm() with retry
+      llm.py                       # call_llm() — add new models/providers here
       jinja_utils.py               # render_template()
       json_utils.py                # parse_json_output()
-    configs/
-      zero_shot.yaml               # Example env config (policy-agnostic)
-      user_only.yaml
-      data_only.yaml
 
   examples/
     minimal_example.py             # End-to-end env loop with stub LLM (no API key needed)
@@ -58,6 +63,10 @@ AUNUEnv/
   scripts/
     run_experiment.py              # Experiment runner + CLI
     run_evaluation.py              # Standalone re-evaluator
+
+  data/                            # Local data (gitignored)
+    data_raw/                      # Sampled CSVs per dataset
+    data_synthesized/              # synthesized_output.json per dataset
 ```
 
 ---

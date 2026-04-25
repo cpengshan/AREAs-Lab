@@ -8,12 +8,12 @@ LangGraph graph:
                ──(end)──▶ END
 
 The single self-looping node manages the full state machine:
-  Phase 0: zero-shot draft → propose_requirement_update
+  Phase 0: zero-shot draft
   Phase 1: data loop (up to max_turns)
              → inspect_data
              → execute requirement on each sample (LLM)
              → reflect on outputs
-             → rewrite requirement → propose_requirement_update
+             → rewrite requirement
   Phase 2: finish with final requirement
 """
 
@@ -32,7 +32,7 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
 
 from agent_state import AgentState, Message
 from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.env.actions import inspect_data, propose_requirement_update, finish
+from AUNUEnv.aunu_env.env.actions import inspect_data, finish
 from AUNUEnv.aunu_env.utils.llm import call_llm
 from AUNUEnv.aunu_env.utils.jinja_utils import render_template
 from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
@@ -121,8 +121,6 @@ class DataInteractionAgent:
             end = datetime.now(timezone.utc).isoformat()
             draft = result["output"]
             logger.info(f"[DataInteraction] Zero-shot draft ({len(draft)} chars)")
-
-            env.step(propose_requirement_update(draft))
 
             messages.append(_make_msg(
                 start, end, "aunu_agent", "zero_shot_draft",
@@ -225,8 +223,6 @@ class DataInteractionAgent:
         end = datetime.now(timezone.utc).isoformat()
         refined_req = rewrite_result["output"]
         logger.info(f"[DataInteraction] Turn {turn}: rewritten ({len(refined_req)} chars)")
-
-        env.step(propose_requirement_update(refined_req))
 
         messages.append(_make_msg(
             start, end, "aunu_agent", "rewrite",

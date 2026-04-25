@@ -8,7 +8,7 @@ LangGraph graph:
                ──(end)──▶ END
 
 The single self-looping node manages the full state machine:
-  Phase 0: zero-shot draft  → propose_requirement_update
+  Phase 0: zero-shot draft
   Phase 1: clarification loop (up to max_turns) → ask_user per turn
   Phase 2: synthesize final → finish
 
@@ -34,7 +34,7 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
 
 from agent_state import AgentState, Message
 from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.env.actions import ask_user, propose_requirement_update, finish
+from AUNUEnv.aunu_env.env.actions import ask_user, finish
 from AUNUEnv.aunu_env.utils.llm import call_llm
 from AUNUEnv.aunu_env.utils.jinja_utils import render_template
 from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
@@ -126,8 +126,6 @@ class UserInteractionAgent:
             end = datetime.now(timezone.utc).isoformat()
             draft = result["output"]
             logger.info(f"[UserInteraction] Zero-shot draft ({len(draft)} chars)")
-
-            env.step(propose_requirement_update(draft))
 
             messages.append(_make_msg(
                 start, end, "aunu_agent", "zero_shot_draft",

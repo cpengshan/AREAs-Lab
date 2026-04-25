@@ -23,7 +23,7 @@ const DEFAULT_DATASETS = [
     "starmpcc_Asclepius-Synthetic-Clinical-Notes",
     "thu-coai_esconv"
 ];
-const DEFAULT_STRATEGIES = ["zero_shot", "persona", "user", "data", "hybrid"];
+const DEFAULT_STRATEGIES = ["zero_shot", "persona", "user_interaction", "data_interaction", "hybrid"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 const METRIC_KEYS = [
   "precision",
@@ -665,16 +665,16 @@ export default function App() {
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
     "zero_shot",
     "persona",
-    "user",
-    "data",
+    "user_interaction",
+    "data_interaction",
     "hybrid",
   ]);
   const [strategyExperimentIds, setStrategyExperimentIds] = useState<Record<string, string>>({
     zero_shot: DEFAULT_EXPERIMENTS[0],
     persona: DEFAULT_EXPERIMENTS[0],
-    user: DEFAULT_EXPERIMENTS[0],
-    data: DEFAULT_EXPERIMENTS[0],
-    mix: DEFAULT_EXPERIMENTS[0],
+    user_interaction: DEFAULT_EXPERIMENTS[0],
+    data_interaction: DEFAULT_EXPERIMENTS[0],
+    hybrid: DEFAULT_EXPERIMENTS[0],
   });
   const [runs, setRuns] = useState<LoadedRun[]>([]);
   const [loading, setLoading] = useState(false);

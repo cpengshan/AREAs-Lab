@@ -8,54 +8,84 @@ AUNU is a research framework for benchmarking how LLM agents transform underspec
 
 ```
 AUNU/
-├── agent/                          # Agent layer (main entry point)
-│   ├── run_agent.py                # CLI entry point for all strategies
-│   ├── zero_shot_agent.py          # Zero-shot strategy
-│   ├── user_interaction_agent.py   # User-interaction strategy
-│   ├── data_interaction_agent.py   # Data-interaction strategy
-│   ├── agent_state.py              # LangGraph AgentState TypedDict
-│   ├── prompts/                    # All Jinja2 prompt templates
+├── agent/                              # Agent layer (main entry point)
+│   ├── run_agent.py                    # CLI entry point for all strategies
+│   ├── zero_shot_agent.py              # Zero-shot strategy implementation
+│   ├── user_interaction_agent.py       # User-interaction strategy implementation
+│   ├── data_interaction_agent.py       # Data-interaction strategy implementation
+│   ├── agent_state.py                  # LangGraph AgentState TypedDict
+│   ├── prompts/                        # Jinja2 prompt templates
 │   │   ├── agents/
 │   │   │   ├── aunu_agent/
 │   │   │   │   ├── zero_shot.jinja
-│   │   │   │   ├── user/           # user_interaction prompts
-│   │   │   │   ├── data/           # data_interaction prompts
+│   │   │   │   ├── user/               # user_interaction prompts
+│   │   │   │   ├── data/               # data_interaction prompts
 │   │   │   │   └── hybrid/
-│   │   │   └── mimic_user/         # MIMIC user simulation prompts
-│   │   └── Evaluation/             # LLM judge prompts (legacy location)
-│   └── scripts/                    # SLURM batch submission scripts
-│
-├── AUNUEnv/                        # Benchmark environment package
-│   └── aunu_env/
-│       ├── env/
-│       │   ├── aunu_env.py         # Core gym-style environment
-│       │   ├── actions.py          # Action constructors & validation
-│       │   └── state.py            # EpisodeState dataclass
-│       ├── dataset/
-│       │   ├── schema.py           # PersonaInfo, TaskInstance dataclasses
-│       │   └── loader.py           # load_dataset() from synthesized JSON
-│       ├── users/
-│       │   └── mimic_user.py       # Simulated user (passive & persona modes)
-│       ├── evaluator/
-│       │   ├── atomic_evaluator.py # 3-stage LLM evaluation pipeline
-│       │   ├── metrics.py          # F1/precision/recall computation
-│       │   └── prompt/             # LLM judge Jinja2 templates
-│       ├── utils/
-│       │   ├── llm.py              # Unified LLM call interface (retry + cost)
-│       │   ├── jinja_utils.py      # render_template() helper
-│       │   └── json_utils.py       # parse_json_output() helper
-│       └── config.py               # AUNUEnvConfig dataclass
-│
-├── data/
-│   └── data_synthesized/
+│   │   │   └── mimic_user/             # MIMIC user simulation prompts
+│   │   └── Evaluation/                 # LLM judge prompts
+│   │       ├── LLM_judge_decompose.jinja
+│   │       └── LLM_judge_compare.jinja
+│   ├── scripts/                        # SLURM batch submission scripts
+│   │   ├── run_zero_shot_agent.sh
+│   │   ├── run_user_interaction_agent.sh
+│   │   └── run_data_interaction_agent.sh
+│   ├── logs/                           # Per-strategy run logs
+│   │   ├── zero_shot/
+│   │   ├── user_interaction/
+│   │   └── data_interaction/
+│   └── results/                        # Per-dataset experiment outputs
 │       └── <dataset_name>/
-│           └── synthesized_output.json   # Personas + gold task specs per dataset
+│           ├── zero_shot/Experiment<N>/
+│           ├── user_interaction/Experiment<N>/
+│           └── data_interaction/Experiment<N>/
 │
-├── scripts/                        # Shared utility scripts
-│   └── model/
-│       └── model_base.py           # Alternative unified LLM interface
+├── AUNUEnv/                            # Benchmark environment package
+│   ├── aunu_env/
+│   │   ├── config.py                   # AUNUEnvConfig dataclass
+│   │   ├── configs/
+│   │   │   └── default.yaml            # Default model & env config (edit here)
+│   │   ├── env/
+│   │   │   ├── aunu_env.py             # Core gym-style environment
+│   │   │   ├── actions.py              # Action constructors & validation
+│   │   │   └── state.py                # EpisodeState dataclass
+│   │   ├── dataset/
+│   │   │   ├── schema.py               # PersonaInfo, TaskInstance dataclasses
+│   │   │   └── loader.py               # load_dataset() from synthesized JSON
+│   │   ├── users/
+│   │   │   ├── mimic_user.py           # Simulated user (passive & persona modes)
+│   │   │   └── prompts/                # User simulator Jinja2 templates
+│   │   ├── evaluator/
+│   │   │   ├── atomic_evaluator.py     # 3-stage LLM evaluation pipeline
+│   │   │   ├── metrics.py              # F1/precision/recall computation
+│   │   │   └── prompt/                 # LLM judge Jinja2 templates
+│   │   └── utils/
+│   │       ├── llm.py                  # Unified LLM call interface (retry + cost)
+│   │       ├── jinja_utils.py          # render_template() helper
+│   │       └── json_utils.py           # parse_json_output() helper
+│   ├── examples/
+│   │   ├── minimal_example.py          # End-to-end env loop (no API key needed)
+│   │   └── policies.py                 # Reference policies (ZeroShot/UserOnly/DataOnly)
+│   ├── scripts/
+│   │   ├── run_experiment.py           # Experiment runner CLI
+│   │   └── run_evaluation.py           # Standalone re-evaluator
+│   └── data/                           # AUNUEnv local data (gitignored)
+│       ├── data_raw/                   # Sampled CSVs per dataset
+│       └── data_synthesized/           # synthesized_output.json per dataset
 │
-└── agent-ui/                       # React + Vite visualization frontend
+├── results/                            # Legacy / cross-dataset results
+│   └── <dataset_name>/
+│       ├── zero_shot/
+│       ├── user/
+│       ├── data/
+│       ├── persona/
+│       └── ground_truth_units.json
+│
+├── agent-ui/                           # React + Vite visualization frontend
+│   └── src/App.tsx                     # Main UI component
+│
+├── result_visualization.ipynb          # Notebook for results analysis
+├── pyproject.toml                      # Python project / dependency config
+└── .env                                # API keys (gitignored)
 ```
 
 ---
@@ -72,7 +102,6 @@ AUNU/
 |--------|-------------|
 | `ask_user(question)` | Pose a clarification question to the MIMIC user |
 | `inspect_data(n_samples, query)` | Sample rows from the task dataset CSV |
-| `propose_requirement_update(requirement)` | Update the current draft requirement |
 | `finish(final_requirement)` | Submit the final requirement and trigger evaluation |
 
 **Episode flow:**
@@ -118,7 +147,7 @@ Three-stage LLM pipeline comparing the agent's final requirement against the gol
 2. **Decompose predicted** → list of atomic requirement units
 3. **Compare** → matched pairs, missing units, hallucinated units
 
-Scores computed from TP/FP/FN counts: **precision**, **recall**, **F1**, **alignment**, **constraint_preservation**.
+Scores computed from TP/FP/FN counts: **precision**, **recall**, **F1**
 
 ### MIMIC User (`MimicUser`)
 
@@ -133,8 +162,8 @@ Simulates user feedback using Jinja2 templates. Two modes:
 **Requirements:** Python 3.10+
 
 ```bash
-# Install dependencies
-pip install anthropic datasets jinja2 langgraph pandas python-dotenv
+# Install from requirements.txt
+pip install -r requirements.txt
 
 # Or with uv
 uv sync
@@ -151,32 +180,35 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ## Running Agents
 
-All agents are launched via `agent/run_agent.py` from the repo root.
+All agents are launched via `agent/run_agent.py` from the repo root. Models and environment defaults are read from a YAML config file; CLI flags override individual fields.
 
 ```bash
-# Zero-shot
+# Zero-shot — single LLM call, no interaction
 python agent/run_agent.py \
+  --config AUNUEnv/aunu_env/configs/default.yaml \
   --strategy zero_shot \
   --agent_model gpt-4.1 \
   --dataset alexfabbri/multi_news \
   --persona 1 2 3
 
-# User interaction
+# User interaction — clarify via MIMIC user, then synthesize
 python agent/run_agent.py \
+  --config AUNUEnv/aunu_env/configs/default.yaml \
   --strategy user_interaction \
-  --agent_model claude-haiku-4-5-20251001 \
-  --mimic_model gemini-3.1-flash-lite-preview \
-  --evaluator_model gpt-5.4 \
+  --agent_model gpt-4.1 \
+  --mimic_model gpt-4.1-mini \
+  --evaluator_model gpt-4.1 \
   --dataset alexfabbri/multi_news \
   --persona 1 2 3 4 5 \
-  --max_turns 4 \
+  --max_turns 3 \
   --user_mode passive
 
-# Data interaction
+# Data interaction — inspect dataset samples, reflect, rewrite
 python agent/run_agent.py \
+  --config AUNUEnv/aunu_env/configs/default.yaml \
   --strategy data_interaction \
-  --agent_model claude-haiku-4-5-20251001 \
-  --evaluator_model gpt-5.4 \
+  --agent_model gpt-4.1 \
+  --evaluator_model gpt-4.1 \
   --dataset alexfabbri/multi_news \
   --persona 1 2 3 4 5 \
   --max_turns 3
@@ -186,27 +218,32 @@ python agent/run_agent.py \
 
 | Argument | Default | Description |
 |----------|---------|-------------|
+| `--config` | none | Path to `AUNUEnvConfig` YAML. Models, temperatures, `max_steps`, and `user_mode` are read from here; CLI flags override individual fields. |
 | `--strategy` | `zero_shot` | `zero_shot` \| `user_interaction` \| `data_interaction` |
-| `--agent_model` | required | LLM for the AUNU agent |
-| `--mimic_model` | agent_model | LLM for the MIMIC user (`user_interaction` only) |
-| `--evaluator_model` | agent_model | LLM for the atomic evaluator |
-| `--dataset` | `alexfabbri/multi_news` | Dataset name (must exist under `data/data_synthesized/`) |
-| `--persona` | required | Space-separated persona IDs to run |
+| `--agent_model` | from config | LLM for the AUNU agent (overrides config) |
+| `--mimic_model` | from config `user_model` | LLM for the MIMIC user (overrides config) |
+| `--evaluator_model` | from config | LLM for the atomic evaluator (overrides config) |
+| `--dataset` | from config | HuggingFace dataset id — must have a matching folder under `AUNUEnv/data/data_synthesized/` |
+| `--persona` | **required** | Space-separated persona IDs to run (e.g. `--persona 1 2 3`) |
 | `--input_type` | `elevator_pitch_summary` | `elevator_pitch_summary` \| `deep_dive_summary` |
-| `--max_turns` | `5` | Max clarification/refinement turns |
-| `--max_steps` | `15` | Max env steps before forced termination |
-| `--user_mode` | `passive` | `passive` \| `persona` |
-| `--log_file_path` | auto | Path for run log (auto-increments experiment number) |
+| `--max_turns` | `5` | Max clarification rounds (`user_interaction`) or data-inspection cycles (`data_interaction`) |
+| `--max_steps` | from config (`15`) | Max env steps before forced termination (overrides config) |
+| `--user_mode` | from config (`passive`) | `passive` \| `persona` (overrides config) |
+| `--output_dir` | auto under `agent/results/` | Override the results output directory |
+| `--log_file_path` | auto under `agent/logs/` | Path for the run log file |
+| `--verbose` | false | Enable DEBUG-level logging |
 
 ### Supported Models
 
-Any model name starting with the following prefixes is routed automatically to the correct provider. Models not in the pricing table will run with `cost=0.0`.
+Model provider is inferred automatically from the model name prefix. Models not listed in the pricing table in `AUNUEnv/aunu_env/utils/llm.py` will still run but cost will be reported as `0.0`.
 
-| Prefix | Provider |
-|--------|----------|
-| `gpt-`, `o1`, `o3`, `o4` | OpenAI |
-| `gemini` | Google |
-| `claude` | Anthropic |
+| Prefix | Provider | Example models |
+|--------|----------|----------------|
+| `gpt-`, `o1`, `o3`, `o4` | OpenAI | `gpt-4.1`, `gpt-4.1-mini`, `o3` |
+| `gemini` | Google | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` |
+| `claude` | Anthropic | `claude-opus-4-7`, `claude-haiku-4-5-20251001` |
+
+To add a new model, insert an entry in `PRICING_DATA` in [AUNUEnv/aunu_env/utils/llm.py](AUNUEnv/aunu_env/utils/llm.py).
 
 ### SLURM Batch Jobs
 
@@ -216,7 +253,16 @@ sbatch agent/scripts/run_user_interaction_agent.sh
 sbatch agent/scripts/run_data_interaction_agent.sh
 ```
 
-Edit the model, dataset, and turn variables at the top of each script before submitting.
+Edit the variables at the top of each script before submitting:
+
+```bash
+CONFIG="..."           # path to default.yaml
+AGENT_MODEL="gpt-4.1"
+MAX_TURNS=3            # user_interaction / data_interaction only
+MAX_STEPS=15
+OUTPUT_DIR="..."
+DATASETS=(...)         # list of "data_dir:dataset_name" pairs to run
+```
 
 ---
 

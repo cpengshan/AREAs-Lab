@@ -51,7 +51,8 @@ from AUNUEnv.aunu_env.dataset.loader import load_dataset
 from AUNUEnv.aunu_env.env.aunu_env import AUNUEnv
 from AUNUEnv.aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
 from AUNUEnv.aunu_env.evaluator.metrics import aggregate_results
-from AUNUEnv.aunu_env.users import MimicUser
+from AUNUEnv.aunu_env.users.mimic_user import MimicUser
+from AUNUEnv.aunu_env.users.mimic_user_v2 import MimicUserV2
 
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
@@ -119,6 +120,10 @@ def parse_args():
     parser.add_argument("--log_file_path", type=str, default=None,
                         help="Path to log file (default: auto-generated in results/)")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--use_v2", action="store_true",
+        help="Use MimicUserV2 (feedback_mimic_user_v2.jinja + responser_habit.json, habit auto-assigned by persona)",
+    )
     return parser.parse_args()
 
 
@@ -337,11 +342,17 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
 
         logger.info(f"[{task.task_id}] Starting (persona={task.persona_id}, task={task_num})...")
 
-        user = MimicUser(
-            model_name=cfg.user_model,
-            persona_config=persona_config,
-            temperature=cfg.effective_user_temperature,
-        )
+        if args.use_v2:
+            user = MimicUserV2(
+                model_name=cfg.user_model,
+                temperature=cfg.effective_user_temperature,
+            )
+        else:
+            user = MimicUser(
+                model_name=cfg.user_model,
+                persona_config=persona_config,
+                temperature=cfg.effective_user_temperature,
+            )
         log = None
 
         try:

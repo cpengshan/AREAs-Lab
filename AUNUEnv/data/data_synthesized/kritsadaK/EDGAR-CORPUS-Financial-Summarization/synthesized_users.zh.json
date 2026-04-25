@@ -1,0 +1,218 @@
+[
+  {
+    "persona_id": 1,
+    "role": "首席投资官 (CIO)",
+    "competency_matrix": {
+      "proficiencies": [
+        "资本配置",
+        "宏观经济趋势分析",
+        "风险偏好预警"
+      ],
+      "limitations": [
+        "深度阅读时间有限",
+        "无技术编程能力"
+      ]
+    },
+    "business_motivation": "投资组合超额收益 (Alpha) 及季度回报波动率",
+    "workflow_friction": "庞大的 10-K 原文 (input) 文本量使得手动识别 500 只成分股组合中的系统性风险变得不可能。",
+    "potential_tasks": [
+      {
+        "task_name": "高管情绪合成",
+        "description": "利用“摘要 (summary)”列生成跨投资组合的“持续经营”评估热力图，以重新平衡受压资产。"
+      },
+      {
+        "task_name": "多模型共识审计",
+        "description": "对比 GPT-3.5 与 Claude 3.5 生成的摘要，识别对源自 HTML 的密集申报文件中流动性风险的高方差解读。"
+      }
+    ]
+  },
+  {
+    "persona_id": 2,
+    "role": "资深合规审计师",
+    "competency_matrix": {
+      "proficiencies": [
+        "SEC 监管框架",
+        "GAAP 标准",
+        "审计线索归档"
+      ],
+      "limitations": [
+        "对大模型幻觉模式缺乏了解",
+        "依赖 UI 工具流"
+      ]
+    },
+    "business_motivation": "监管报告准确性及规避罚款",
+    "workflow_friction": "“原文 (input)”列中的 HTML 转文本噪声产生的伪影可能导致 AI 在“摘要 (summary)”中错误呈现负债数据。",
+    "potential_tasks": [
+      {
+        "task_name": "差异点抽检",
+        "description": "系统性地对比“原文 (input)”中的数值表格与“摘要 (summary)”文本，确保合成过程中未引入“幻觉”出的营收数字。"
+      },
+      {
+        "task_name": "历史合规基准分析",
+        "description": "利用 1993-2020 年的时间跨度，追踪重大监管变革后“管理层讨论”章节在透明度方面的演变。"
+      }
+    ]
+  },
+  {
+    "persona_id": 3,
+    "role": "散户投资者教育者",
+    "competency_matrix": {
+      "proficiencies": [
+        "金融叙事",
+        "内容简化",
+        "视觉传播"
+      ],
+      "limitations": [
+        "缺乏深度法律/合同专业知识",
+        "无数据工程技能"
+      ]
+    },
+    "business_motivation": "订阅者增长及读者理解度评分",
+    "workflow_friction": "“摘要 (summary)”列虽然简练，但仍包含大量专业术语，普通散户交易者依然难以理解。",
+    "potential_tasks": [
+      {
+        "task_name": "风格迁移简化",
+        "description": "通过提示词调用第三方模型，将技术性的“摘要 (summary)”转化为 8 年级阅读水平的“太长不看 (TL;DR)”简报。"
+      },
+      {
+        "task_name": "术语类比映射",
+        "description": "从原文中提取“收入确认”等复杂词汇，并根据摘要语境生成易于理解的类比示例。"
+      }
+    ]
+  },
+  {
+    "persona_id": 4,
+    "role": "并购 (M&A) 战略顾问",
+    "competency_matrix": {
+      "proficiencies": [
+        "竞争情报",
+        "市场定位",
+        "战略基准分析"
+      ],
+      "limitations": [
+        "手动数据录入疲劳",
+        "需要高层级的 UI 仪表盘"
+      ]
+    },
+    "business_motivation": "目标收购速度及尽职调查效率",
+    "workflow_friction": "从非结构化的“原文 (input)”中提取“资产”和“负债”速度缓慢；现有摘要可能会遗漏特定的利基知识产权说明。",
+    "potential_tasks": [
+      {
+        "task_name": "竞争护城河提取",
+        "description": "审查同行业者的摘要，识别研发支出或战略转型的经常性主题。"
+      },
+      {
+        "task_name": "上下文噪声过滤",
+        "description": "通过提示词忽略原文中的 HTML 伪影和模板化法律免责声明，寻找关于待决诉讼的“大海捞针”式信息。"
+      }
+    ]
+  },
+  {
+    "persona_id": 5,
+    "role": "AI 质量保证 (QA) 专员",
+    "competency_matrix": {
+      "proficiencies": [
+        "提示词工程",
+        "红队测试",
+        "模型评估"
+      ],
+      "limitations": [
+        "非深度金融法律专家",
+        "依赖比较逻辑"
+      ]
+    },
+    "business_motivation": "模型可靠性及最小化误报率",
+    "workflow_friction": "该数据集采用混合 AI 策略（GPT/Claude）；QA 必须识别某一模型是否比另一模型更容易遗漏数值数据。",
+    "potential_tasks": [
+      {
+        "task_name": "真相忠实度评分",
+        "description": "使用 UI 工具，根据“摘要 (summary)”对原始“原文 (input)”文本的事实遵循程度进行 1-10 分的评级。"
+      },
+      {
+        "task_name": "长度偏差审计",
+        "description": "调查 Claude 3.5 Sonnet 对长报告的摘要是否比 Haiku 对短片段的摘要更容易产生幻觉。"
+      }
+    ]
+  },
+  {
+    "persona_id": 6,
+    "role": "企业 ESG 主管",
+    "competency_matrix": {
+      "proficiencies": [
+        "可持续发展报告",
+        "伦理合规",
+        "公共关系"
+      ],
+      "limitations": [
+        "对数值密度感到疲劳",
+        "对原始 SEC EDGAR 格式经验有限"
+      ]
+    },
+    "business_motivation": "ESG 评级提升及社会责任透明度",
+    "workflow_friction": "标准的金融摘要通常优先考虑“营收”，而忽视了埋藏在“原文 (input)”中的“环境风险”披露。",
+    "potential_tasks": [
+      {
+        "task_name": "非财务风险提取",
+        "description": "专门针对“原文 (input)”列进行过滤，提取通用“摘要 (summary)”中遗漏的气候相关负债。"
+      },
+      {
+        "task_name": "伦理演变分析",
+        "description": "追踪 1993 年与 2020 年摘要中“多样性”或“碳”关键词的出现频率，以报告企业趋势的转变。"
+      }
+    ]
+  },
+  {
+    "persona_id": 7,
+    "role": "机构销售负责人",
+    "competency_matrix": {
+      "proficiencies": [
+        "客户关系管理",
+        "价值主张设计",
+        "市场叙事"
+      ],
+      "limitations": [
+        "需要“碎化片”见解",
+        "没有时间检查原始数据"
+      ]
+    },
+    "business_motivation": "客户留存及资产管理规模 (AUM) 增长",
+    "workflow_friction": "客户要求对新发布的 10-K 进行“即时”见解；在直播销售会议期间处理原始“原文 (input)”太慢。",
+    "potential_tasks": [
+      {
+        "task_name": "即时洞察闪存卡",
+        "description": "将 200-300 字的“摘要 (summary)”转化为三个用于客户简报的高影响力谈话要点。"
+      },
+      {
+        "task_name": "跨申报文件对比 UI",
+        "description": "使用并列 UI 将当年的摘要与往年对比，突出企业发展方向的“剧烈变化”。"
+      }
+    ]
+  },
+  {
+    "persona_id": 8,
+    "role": "法律运营经理",
+    "competency_matrix": {
+      "proficiencies": [
+        "工作流自动化",
+        "合同生命周期管理",
+        "供应商监督"
+      ],
+      "limitations": [
+        "非执业律师",
+        "下游工具需要结构化输出"
+      ]
+    },
+    "business_motivation": "降低运营成本及法律审查延迟",
+    "workflow_friction": "“原文 (input)”文本通常包含破坏文本处理流的损坏表格和 HTML 标签。",
+    "potential_tasks": [
+      {
+        "task_name": "实体关系映射",
+        "description": "从“原文 (input)”中提取所有提及的子公司和法律实体，并验证其在“摘要 (summary)”中的存在性。"
+      },
+      {
+        "task_name": "模板化内容去重",
+        "description": "识别并剔除原文中重复的“标准风险”语言，使摘要严格集中于独特的、跨年度的变化。"
+      }
+    ]
+  }
+]

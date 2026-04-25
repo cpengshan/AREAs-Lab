@@ -1,0 +1,39 @@
+{
+    "dataset_metadata": {
+        "domain": "Financial / Regulatory (SEC Filings)",
+        "total_instances": "60,000",
+        "languages": [
+            "en"
+        ],
+        "primary_data_type": "Parallel Corpora (Section-Summary)",
+        "description": "The EDGAR-CORPUS Financial Summarization dataset is derived from annual reports (Form 10-K) filed by publicly traded companies with the U.S. Securities and Exchange Commission (SEC). It focuses on pairing specific sections of these filings, such as 'Item 7: Management's Discussion and Analysis (MD&A)', with expert-written or highly condensed summaries to facilitate abstractive summarization in the financial domain."
+    },
+    "schema_analysis": [
+        {
+            "column_name": "report",
+            "data_type": "string",
+            "description": "The source text containing a specific section from a 10-K filing, typically the MD&A section.",
+            "is_text": true,
+            "avg_length": "approx. 4,500 - 5,000 words"
+        },
+        {
+            "column_name": "summary",
+            "data_type": "string",
+            "description": "The ground-truth summary corresponding to the source report section, condensed for key financial insights.",
+            "is_text": true,
+            "avg_length": "approx. 350 - 450 words"
+        },
+        {
+            "column_name": "filename",
+            "data_type": "string",
+            "description": "The name of the source file or the accession number of the SEC filing.",
+            "is_text": false,
+            "avg_length": null
+        }
+    ],
+    "structural_logic": {
+        "relationships": "The 'report' column provides the context and raw data, while the 'summary' column is the target output. The 'filename' acts as a metadata link to identify specific companies or filing years.",
+        "label_dynamics": "High complexity and low compression ratio compared to news; the content is dense with quantitative data, fiscal dates, and legal caveats.",
+        "potential_bottlenecks": "Financial texts often contain tables, numerical lists, and standardized legal boilerplate which may be difficult for models to summarize narratively. Significant document length requires long-context handling."
+    }
+}

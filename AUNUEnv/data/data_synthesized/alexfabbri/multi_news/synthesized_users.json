@@ -1,0 +1,220 @@
+[
+  {
+    "persona_id": 1,
+    "role": "Chief Editorial Strategist",
+    "competency_matrix": {
+      "proficiencies": [
+        "Narrative synthesis",
+        "Editorial voice consistency",
+        "High-level content planning"
+      ],
+      "limitations": [
+        "Non-technical",
+        "No knowledge of vector embeddings",
+        "Zero coding ability"
+      ]
+    },
+    "business_motivation": "Maintaining brand authority and reader retention through high-quality, balanced multi-perspective reporting.",
+    "workflow_friction": "Synthesizing disparate source articles in the 'document' column into a single voice without losing critical nuances from minority sources.",
+    "potential_tasks": [
+      {
+        "task_name": "Multi-Source Narrative Synthesis",
+        "description": "Using a no-code LLM interface to generate a 250-word summary that harmonizes conflicting facts from the '|||||' delimited articles into a cohesive editorial piece."
+      },
+      {
+        "task_name": "Style-Transfer for Diverse Demographics",
+        "description": "Adapting the 'summary' ground truth into a simplified, 5th-grade reading level version for accessibility without losing the factual density of the original 8:1 compression."
+      }
+    ]
+  },
+  {
+    "persona_id": 2,
+    "role": "Crisis Management Lead",
+    "competency_matrix": {
+      "proficiencies": [
+        "Rapid information triage",
+        "Risk assessment",
+        "Stakeholder communication"
+      ],
+      "limitations": [
+        "Time-constrained",
+        "Requires 'bottom-line' results",
+        "Relies on UI-based dashboards"
+      ]
+    },
+    "business_motivation": "Minimizing response latency during breaking news cycles to ensure accurate public safety information.",
+    "workflow_friction": "The 'document' field length (2,103 words avg) is too dense for manual review during active crises; needs immediate extraction of actionable facts.",
+    "potential_tasks": [
+      {
+        "task_name": "Zero-Shot Fact Extraction",
+        "description": "Prompting a model to extract specific entities (names, locations, dates) across all source articles to build a real-time event timeline."
+      },
+      {
+        "task_name": "Conflicting Intel Resolution",
+        "description": "Identifying and flagging contradictory statements between source articles separated by '|||||' to prevent the spread of misinformation in summaries."
+      }
+    ]
+  },
+  {
+    "persona_id": 3,
+    "role": "AI Governance & Ethics Officer",
+    "competency_matrix": {
+      "proficiencies": [
+        "Regulatory compliance",
+        "Bias detection",
+        "Audit trail documentation"
+      ],
+      "limitations": [
+        "Limited understanding of model architecture",
+        "Focuses on output safety over model performance"
+      ]
+    },
+    "business_motivation": "Ensuring the 'summary' output does not introduce hallucinations or political biases not present in the 'document' sources.",
+    "workflow_friction": "The high compression ratio (8:1) increases the risk of 'smearing'\u2014where the model blends distinct facts into a false third narrative.",
+    "potential_tasks": [
+      {
+        "task_name": "Hallucination Audit",
+        "description": "Comparing the 'summary' field against the 'document' field using a 'search-and-verify' UI tool to ensure every summary claim is grounded in source text."
+      },
+      {
+        "task_name": "Source Representation Mapping",
+        "description": "Evaluating if the summary disproportionately favors the first article in the '|||||' chain, ensuring fair representation of all source documents."
+      }
+    ]
+  },
+  {
+    "persona_id": 4,
+    "role": "Media Analyst & Fact Checker",
+    "competency_matrix": {
+      "proficiencies": [
+        "Cross-referencing",
+        "Information verification",
+        "Deep research"
+      ],
+      "limitations": [
+        "Slower workflow due to manual verification",
+        "Unfamiliar with NLP tokenization constraints"
+      ]
+    },
+    "business_motivation": "High factual precision; zero tolerance for errors in the synthesized output.",
+    "workflow_friction": "Individual articles in the 'document' field are often truncated or repetitive, making it hard to identify which source is the 'primary' record.",
+    "potential_tasks": [
+      {
+        "task_name": "Source Attribution Tagging",
+        "description": "Manually annotating the 'summary' text via a labeling UI to link specific sentences back to their specific source article within the 'document' block."
+      },
+      {
+        "task_name": "Long-Context Window Verification",
+        "description": "Using a chat interface with a 32k+ token window to verify if the 'summary' missed critical data points located at the very end of a 5,000-word 'document' string."
+      }
+    ]
+  },
+  {
+    "persona_id": 5,
+    "role": "Product Manager (News Aggregation App)",
+    "competency_matrix": {
+      "proficiencies": [
+        "Market fit analysis",
+        "User experience design",
+        "Cost-benefit analysis"
+      ],
+      "limitations": [
+        "Does not write code",
+        "Needs to balance quality with API token costs"
+      ]
+    },
+    "business_motivation": "Optimizing token usage (latency/cost) while maintaining a 'summary' quality that users are willing to pay for.",
+    "workflow_friction": "The average 'document' length (2k+ words) makes every API call expensive; needs to find the 'minimal viable context' for a good summary.",
+    "potential_tasks": [
+      {
+        "task_name": "Token Efficiency Benchmarking",
+        "description": "Using a prompt-engineering playground to test if summaries generated from only the first 500 words of the 'document' match the quality of the full-text summaries."
+      },
+      {
+        "task_name": "Personalized Summary Formatting",
+        "description": "Designing 'TL;DR' bullet-point templates for mobile UI that transform the prose-heavy 'summary' into scannable lists."
+      }
+    ]
+  },
+  {
+    "persona_id": 6,
+    "role": "Content Operations Manager",
+    "competency_matrix": {
+      "proficiencies": [
+        "Workflow automation",
+        "Quality assurance (QA)",
+        "Resource allocation"
+      ],
+      "limitations": [
+        "Relies on pre-built internal tools",
+        "Management-heavy role"
+      ]
+    },
+    "business_motivation": "Scaling the volume of summaries produced per day without increasing the human head count.",
+    "workflow_friction": "Managing the '|||||' delimiter during bulk uploads to CMS platforms which often misinterpret special characters.",
+    "potential_tasks": [
+      {
+        "task_name": "Automated QA Scoring",
+        "description": "Using a 'LLM-as-a-judge' UI to score the 'summary' column on a scale of 1-10 for 'Conciseness' and 'Clarity' based on the 'document' input."
+      },
+      {
+        "task_name": "Template-Based Metadata Generation",
+        "description": "Generating SEO keywords and social media headlines based on the 'summary' column to streamline the publishing pipeline."
+      }
+    ]
+  },
+  {
+    "persona_id": 7,
+    "role": "Corporate Librarian / Archivist",
+    "competency_matrix": {
+      "proficiencies": [
+        "Taxonomy management",
+        "Categorization",
+        "Metadata standards"
+      ],
+      "limitations": [
+        "Highly meticulous but non-technical",
+        "Avoids 'black box' AI solutions"
+      ]
+    },
+    "business_motivation": "Ensuring the 'document' archives are searchable and properly categorized for historical retrieval.",
+    "workflow_friction": "The 'document' field is a 'wall of text'; it lacks structured metadata like category, sub-topic, or sentiment.",
+    "potential_tasks": [
+      {
+        "task_name": "Hierarchical Topic Labeling",
+        "description": "Reviewing and assigning standardized library codes (e.g., Dewey or custom news tags) to 'document' clusters using an AI-assisted classification UI."
+      },
+      {
+        "task_name": "Duplicate Detection Audit",
+        "description": "Identifying 'document' entries that contain essentially the same articles but in different sequences to clean the dataset for long-term storage."
+      }
+    ]
+  },
+  {
+    "persona_id": 8,
+    "role": "Legal Discovery Specialist",
+    "competency_matrix": {
+      "proficiencies": [
+        "Evidence identification",
+        "Privacy compliance",
+        "Chain of custody"
+      ],
+      "limitations": [
+        "Focuses on legal risk",
+        "Requires 'explainable' AI only"
+      ]
+    },
+    "business_motivation": "Identifying PII (Personally Identifiable Information) or legally sensitive claims within the news sources to avoid litigation.",
+    "workflow_friction": "The 'document' field may contain leaked documents or sensitive names that should not be included in the public-facing 'summary'.",
+    "potential_tasks": [
+      {
+        "task_name": "Redaction Verification",
+        "description": "Using a sensitive-word-masking UI to ensure names mentioned in the 'document' articles are appropriately generalized in the 'summary' (e.g., 'a local official')."
+      },
+      {
+        "task_name": "Attribution Logic Audit",
+        "description": "Checking the 'summary' to ensure that 'allegations' mentioned in source articles are described as 'claims' rather than 'facts' to prevent libel."
+      }
+    ]
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "dataset_metadata": {
+    "domain": "Legal/Intellectual Property",
+    "total_instances": "Approx. 52,000",
+    "languages": ["en"],
+    "primary_data_type": "Monolingual Text (Classification)",
+    "description": "A dataset derived from USPTO patent documents for the task of multi-class classification. It specifically maps patent abstracts to their corresponding Cooperative Patent Classification (CPC) codes at the section level (9 categories)."
+  },
+  "schema_analysis": [
+    {
+      "column_name": "text",
+      "data_type": "string",
+      "description": "The abstract section of the patent application providing a technical summary of the invention.",
+      "is_text": true,
+      "avg_length": "100-150 words"
+    },
+    {
+      "column_name": "label",
+      "data_type": "int",
+      "description": "The integer mapped to the CPC section (0-8), representing categories like Human Necessities, Electricity, or Physics.",
+      "is_text": false,
+      "avg_length": "n/a"
+    }
+  ],
+  "structural_logic": {
+    "relationships": "The 'text' column serves as the feature input containing technical terminology, while the 'label' column provides the ground truth CPC category for supervised learning.",
+    "label_dynamics": "Includes 9 distinct classes (A-H and Y). Class distribution typically reflects real-world patent filing volumes, with potential density in Electricity (H) and Physics (G).",
+    "potential_bottlenecks": "Patent abstracts often contain highly specialized jargon and long-range dependencies; short abstract lengths may occasionally lack sufficient context for ambiguous inventions."
+  }
+}

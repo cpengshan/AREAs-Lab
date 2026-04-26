@@ -311,7 +311,9 @@ A React + Vite frontend is available for exploring agent trajectories and evalua
 python -m http.server 3000 --bind 0.0.0.0
 
 # Start the frontend (from agent-ui/)
-cd agent-ui && npm install && npm run dev -- --host 0.0.0.0 --port 5173
+cd agent-ui 
+npm install 
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
 If running on a remote server, forward both ports locally:

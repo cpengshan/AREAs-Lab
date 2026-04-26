@@ -12,8 +12,8 @@ CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
 MAX_STEPS=5
 OUTPUT_DIR="${REPO_ROOT}/results/zero_shot"
-AGENT_MODEL="gpt-4.1"
-AGENT_MODEL_TEMPERATURE=0.7
+AGENT_MODEL="claude-haiku-4-5-20251001"
+AGENT_MODEL_TEMPERATURE=0.4
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 # data_home_dir: folder containing the synthesized_output.json for that dataset

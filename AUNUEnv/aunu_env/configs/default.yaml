@@ -1,11 +1,11 @@
 # AUNUEnv environment config — policy is external
 
 # LLM models
-user_model: gpt-4.1
+user_model: gemini-3.1-flash-lite-preview
 user_model_temperature: 0.7
 
-evaluator_model: gpt-4.1
-evaluator_model_temperature: 0.7
+evaluator_model: gpt-5.4
+evaluator_model_temperature: 0.0
 
 # MIMIC user — passive mode
 user_mode: passive
@@ -21,6 +21,6 @@ user_mode: passive
 
 # LLM defaults (read by external policy)
 temperature: 0.0
-max_tokens: 8192
+max_tokens: 12288
 
 verbose: false

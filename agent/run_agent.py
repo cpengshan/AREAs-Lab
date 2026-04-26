@@ -57,6 +57,7 @@ from AUNUEnv.aunu_env.users.mimic_user_v2 import MimicUserV2
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
 from data_interaction_agent import DataInteractionAgent
+from hybrid_agent import HybridAgent
 
 RESULTS_DIR = os.path.join(_AGENT_DIR, "results")
 DATA_SYNTHESIZED_DIR = os.path.join(_REPO_ROOT, "AUNUEnv/data/data_synthesized")
@@ -80,7 +81,7 @@ def parse_args():
     )
     parser.add_argument(
         "--strategy",
-        choices=["zero_shot", "user_interaction", "data_interaction"],
+        choices=["zero_shot", "user_interaction", "data_interaction", "hybrid"],
         default="zero_shot",
         help="Agent strategy (default: zero_shot)",
     )
@@ -107,6 +108,8 @@ def parse_args():
     )
     parser.add_argument("--max_turns", type=int, default=None,
                         help="Max clarification turns (user_interaction only; overrides config)")
+    parser.add_argument("--max_iterations", type=int, default=None,
+                        help="Max routing iterations for hybrid strategy (overrides config)")
     parser.add_argument("--max_steps", type=int, default=None,
                         help="Max env steps per episode (overrides config)")
     parser.add_argument(
@@ -277,6 +280,10 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
              "input_col": e.get("input_col", ""), "samples": e["samples"]}
             for e in log["data_inspection_history"]
         ]
+    if args.strategy == "hybrid":
+        result["router_history"] = log.get("router_history", [])
+        result["user_interactions"] = log.get("user_interactions", [])
+        result["data_interactions"] = log.get("data_interactions", [])
     return result
 
 
@@ -311,6 +318,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         The full results dict (same as written to output.json).
     """
     max_turns = args.max_turns if args.max_turns is not None else 5
+    max_iterations = args.max_iterations if args.max_iterations is not None else 6
 
     evaluator = AtomicEvaluator(
         model_name=cfg.evaluator_model,
@@ -414,6 +422,9 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             elif args.strategy == "data_interaction":
                 agent = DataInteractionAgent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task)
+            elif args.strategy == "hybrid":
+                agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
+                log = agent.run(env, task, user)
             else:
                 agent = UserInteractionAgent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task, user)
@@ -421,8 +432,12 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             task_result = _format_task_result(log, task, args, cfg, task_num)
             if habit_key:
                 task_result["communication_habit"] = args.communication_habit
-            f1 = (log.get("eval_result") or {}).get("scores", {}).get("f1", "N/A")
-            logger.info(f"[{task.task_id}] {label}F1={f1}")
+            scores = (log.get("eval_result") or {}).get("scores", {})
+            recall = scores.get("recall", "N/A")
+            precision = scores.get("precision", "N/A")
+            f1 = scores.get("f1", "N/A")
+            logger.info(f"[{task.task_id}] {label}Recall={recall}  Precision={precision}  F1={f1}")
+            print(f"[{task.task_id}] Recall={recall}  Precision={precision}  F1={f1}")
 
         except Exception as e:
             logger.error(f"[{task.task_id}] {label}FAILED: {e}", exc_info=True)

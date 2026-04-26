@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=aunu_data_interaction
-#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/data_interaction/output.log
+#SBATCH --job-name=aunu_hybrid
+#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
 #SBATCH --mail-type=END,FAIL
@@ -10,15 +10,12 @@ REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_TURNS=4                                       # data-refinement rounds
-MAX_STEPS=15
-OUTPUT_DIR="${REPO_ROOT}/results/data_interaction"
+MAX_ITERATIONS=6                                   # max routing iterations per episode
+MAX_STEPS=20
+OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
 AGENT_MODEL="claude-haiku-4-5-20251001"
-AGENT_MODEL_TEMPERATURE=0.7
 
 # Datasets to run — format: "data_home_dir:dataset_name"
-# data_home_dir: folder containing the synthesized_output.json for that dataset
-# dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
@@ -34,7 +31,7 @@ DATASETS=(
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
 )
 
-LOG_DIR="${REPO_ROOT}/agent/logs/data_interaction"
+LOG_DIR="${REPO_ROOT}/agent/logs/hybrid"
 mkdir -p "$LOG_DIR"
 EXP_ID=1
 while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
@@ -42,7 +39,7 @@ while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
 done
 LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
 
-echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
+echo "Running hybrid Experiment${EXP_ID} across all datasets..."
 
 for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
@@ -72,15 +69,16 @@ PYEOF
 
   python3 "${REPO_ROOT}/agent/run_agent.py" \
     --config "$CONFIG" \
-    --strategy data_interaction \
+    --strategy hybrid \
     --dataset "$DATASET" \
     --persona $PERSONAS \
     --input_type "$INPUT_TYPE" \
-    --max_turns "$MAX_TURNS" \
+    --max_iterations "$MAX_ITERATIONS" \
     --max_steps "$MAX_STEPS" \
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
-    --log_file_path "$LOG_FILE"
+    --log_file_path "$LOG_FILE" \
+    --use_v2
 
 done
 

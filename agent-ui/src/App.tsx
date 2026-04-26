@@ -366,6 +366,37 @@ function ConversationHistoryView({ history }: { history: any[] }) {
   );
 }
 
+function ReflectionHistoryView({ messages }: { messages: any[] }) {
+  const reflections = (messages || []).filter((m: any) => m.role === "aunu_agent" && m.action === "reflect");
+  if (reflections.length === 0) return <div style={{ color: "#666" }}>No reflections found.</div>;
+  return (
+    <div style={{ maxHeight: 520, overflow: "auto", border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
+      {reflections.map((m: any, idx: number) => (
+        <div key={idx} style={{ marginBottom: 16, padding: 12, borderRadius: 10, background: "#fafafa", border: "1px solid #eee" }}>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 8, fontWeight: 600 }}>
+            Reflection #{idx + 1}
+            {m.start_time && <span style={{ fontWeight: 400, marginLeft: 8 }}>{m.start_time}</span>}
+          </div>
+          {m.identified_ambiguity && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", marginBottom: 4 }}>Identified ambiguity</div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: 10 }}>
+                {m.identified_ambiguity}
+              </div>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#444", marginBottom: 4 }}>Raw output</div>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#f6f8fa", border: "1px solid #e5e7eb", borderRadius: 8, padding: 10 }}>
+              {m.output && String(m.output).trim() !== "" ? m.output : "(empty)"}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DataInspectionHistoryView({ history }: { history: any[] }) {
   const [openIdx, setOpenIdx] = React.useState<number | null>(null);
   if (!history || history.length === 0) return <div style={{ color: "#666" }}>No data inspection history.</div>;
@@ -735,6 +766,13 @@ function StrategyRunPanel({
             <h3 style={{ marginTop: 0 }}>Conversation trajectory</h3>
             <MessageView messages={messages} />
           </div>
+
+          {messages.some((m: any) => m.role === "aunu_agent" && m.action === "reflect") && (
+            <div style={panelStyle()}>
+              <h3 style={{ marginTop: 0 }}>Reflection history</h3>
+              <ReflectionHistoryView messages={messages} />
+            </div>
+          )}
 
           {conversationHistory.length > 0 && (
             <div style={panelStyle()}>

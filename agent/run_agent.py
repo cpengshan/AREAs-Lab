@@ -122,7 +122,12 @@ def parse_args():
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
         "--use_v2", action="store_true",
-        help="Use MimicUserV2 (feedback_mimic_user_v2.jinja + responser_habit.json, habit auto-assigned by persona)",
+        help="Use MimicUserV2 (feedback_mimic_user_v3.jinja + responser_habit.json)",
+    )
+    parser.add_argument(
+        "--communication_habit", type=str, default=None,
+        choices=["passive", "neutral", "active"],
+        help="Communication habit for MimicUserV2 (passive/neutral/active). Required with --use_v2.",
     )
     return parser.parse_args()
 
@@ -275,6 +280,27 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
     return result
 
 
+def _sum_costs(output: dict) -> float:
+    """Sum cost across all persona/habit/task entries in output."""
+    total = 0.0
+    for pk, pv in output.items():
+        if pk == "args" or not isinstance(pv, dict):
+            continue
+        for hk, hv in pv.items():
+            if isinstance(hv, dict):
+                # hv is either {task_key: result} or a task result itself
+                first = next(iter(hv.values()), None)
+                if isinstance(first, dict) and "cost" in first:
+                    # habit-keyed: {habit_1: {task_1: result}}
+                    for tv in hv.values():
+                        if isinstance(tv, dict):
+                            total += tv.get("cost", 0.0)
+                else:
+                    # flat: {task_1: result}
+                    total += hv.get("cost", 0.0)
+    return round(total, 6)
+
+
 def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str) -> dict:
     """Run the benchmark for all requested personas and tasks.
 
@@ -304,7 +330,22 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         raise ValueError(f"No tasks found for personas {args.persona} in {cfg.dataset_path}")
     logger.info(f"Running {len(tasks)} tasks for personas {args.persona}")
 
-    # Top-level output structure matches existing results/*/output.json
+    # Load communication habit dict if using MimicUserV2
+    if args.use_v2:
+        if not args.communication_habit:
+            raise ValueError("--communication_habit (passive/neutral/active) is required with --use_v2")
+        _habit_file = os.path.join(
+            _REPO_ROOT, "AUNUEnv", "aunu_env", "users", "prompts", "responser_habit.json"
+        )
+        with open(_habit_file) as f:
+            _all_habits = json.load(f)
+        habit_dict = _all_habits[args.communication_habit]
+        habit_key = f"habit_{args.communication_habit}"
+    else:
+        habit_dict = None
+        habit_key = None
+
+    # Top-level output structure
     output = {
         "args": {
             "strategy_aunu": args.strategy,
@@ -312,6 +353,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             "mimic_model": cfg.user_model,
             "evaluator_model": cfg.evaluator_model,
             "persona": args.persona,
+            "communication_habit": args.communication_habit if args.use_v2 else None,
             "dataset": cfg.dataset_name,
             "input_type": args.input_type,
             "max_turns": max_turns,
@@ -335,16 +377,26 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         task_num = _task_number(task.task_id)
         task_key = f"task_{task_num}"
 
-        # Skip already-completed tasks (resume support)
-        if persona_key in output and task_key in output[persona_key]:
-            logger.info(f"[{task.task_id}] Already done, skipping.")
+        # Skip already-completed (resume support)
+        if habit_key:
+            already_done = (
+                persona_key in output
+                and habit_key in output.get(persona_key, {})
+                and task_key in output[persona_key][habit_key]
+            )
+        else:
+            already_done = persona_key in output and task_key in output.get(persona_key, {})
+        if already_done:
+            logger.info(f"[{task.task_id}] habit={args.communication_habit} Already done, skipping.")
             continue
 
-        logger.info(f"[{task.task_id}] Starting (persona={task.persona_id}, task={task_num})...")
+        label = f"habit={args.communication_habit} " if habit_key else ""
+        logger.info(f"[{task.task_id}] {label}Starting (persona={task.persona_id}, task={task_num})...")
 
         if args.use_v2:
             user = MimicUserV2(
                 model_name=cfg.user_model,
+                habit=habit_dict,
                 temperature=cfg.effective_user_temperature,
             )
         else:
@@ -367,11 +419,13 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 log = agent.run(env, task, user)
 
             task_result = _format_task_result(log, task, args, cfg, task_num)
+            if habit_key:
+                task_result["communication_habit"] = args.communication_habit
             f1 = (log.get("eval_result") or {}).get("scores", {}).get("f1", "N/A")
-            logger.info(f"[{task.task_id}] F1={f1}")
+            logger.info(f"[{task.task_id}] {label}F1={f1}")
 
         except Exception as e:
-            logger.error(f"[{task.task_id}] FAILED: {e}", exc_info=True)
+            logger.error(f"[{task.task_id}] {label}FAILED: {e}", exc_info=True)
             task_result = {
                 "messages": [],
                 "is_complete": False,
@@ -386,18 +440,21 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 "cost": 0.0,
                 "error": str(e),
             }
+            if habit_key:
+                task_result["communication_habit"] = args.communication_habit
 
         # Update output.json
         if persona_key not in output:
             output[persona_key] = {}
-        output[persona_key][task_key] = task_result
+        if habit_key:
+            if habit_key not in output[persona_key]:
+                output[persona_key][habit_key] = {}
+            output[persona_key][habit_key][task_key] = task_result
+        else:
+            output[persona_key][task_key] = task_result
 
         output["args"]["total_cost"] = round(
-            sum(
-                output[pk][tk].get("cost", 0.0)
-                for pk in output if pk != "args"
-                for tk in output[pk]
-            ),
+            _sum_costs(output),
             6,
         )
 
@@ -408,7 +465,12 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         if log is not None:
             if persona_key not in eval_output:
                 eval_output[persona_key] = {}
-            eval_output[persona_key][task_key] = _format_eval_result(log)
+            if habit_key:
+                if habit_key not in eval_output[persona_key]:
+                    eval_output[persona_key][habit_key] = {}
+                eval_output[persona_key][habit_key][task_key] = _format_eval_result(log)
+            else:
+                eval_output[persona_key][task_key] = _format_eval_result(log)
 
             with open(eval_path, "w") as f:
                 json.dump(eval_output, f, indent=2, default=str)

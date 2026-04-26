@@ -1,78 +1,104 @@
-[
-  {
-    "habit": 1,
-    "communication_style": {
-      "language_proficiency": "Not very fluent. The user can express ideas, but not smoothly or precisely.",
-      "communication_habit": "Answers are simple and slightly fragmented. Rarely expands beyond the minimum needed.",
-      "linguistic_features": {
-        "sentence_pattern": [
-          "Uses short sentences or breaks ideas into multiple pieces",
-          "Sometimes produces slightly incomplete or loosely connected sentences"
-        ],
-        "fluency_errors": [
-          "Wording may feel slightly awkward or imprecise",
-          "Grammar may have small issues but remains understandable",
-          "Logical flow between sentences may feel weak"
-        ],
-        "verbosity": [
-          "May repeat similar ideas in slightly different words",
-          "Adds small filler phrases while explaining"
-        ],
-        "hesitation": [
-          "Frequently uses 'I think', 'maybe', 'I guess', 'not sure'",
-          "Sounds uncertain or tentative"
-        ]
-      },
-      "style_rules": {
-        "do": [
-          "Keep responses short to medium length",
-          "Allow slightly broken or fragmented sentences",
-          "Include hesitation and uncertainty",
-          "Allow small redundancy or repetition"
-        ],
-        "dont": [
-          "Do not produce smooth, polished paragraphs",
-          "Do not use precise or technical wording",
-          "Do not sound confident or structured"
-        ]
-      }
+{
+    "passive": {
+        "metadata": {
+            "tone": "Underspecified & Vague",
+            "description": "Correct grammar but limited expression. Not withholding information on purpose, but struggling to articulate specific needs."
+        },
+        "constraints": {
+            "sentences": "one to two sentences",
+            "words": "15 to 35 words",
+            "allow_questions": false,
+            "allow_volunteering": false
+        },
+        "disclosure_logic": {
+            "vague_ask": "Provide a vague answer.",
+            "grounded_ask": "Reveal slightly more detail.",
+            "assumption_ask": "Hedge and resist unsupported assumptions.",
+            "global_rules": [
+                "Reveal information incrementally only",
+                "Never summarize full intent",
+                "Keep latent requirements hidden"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Use hedging (e.g., 'I think', 'maybe', 'kind of')",
+                "Leave meaning loosely expressed",
+                "Maintain a slightly uncertain persona"
+            ],
+            "dont": [
+                "Give precise or complete answers",
+                "Elaborate or explain logic",
+                "Ask questions back"
+            ]
+        }
+    },
+    "neutral": {
+        "metadata": {
+            "tone": "Accurate & Concise",
+            "description": "Direct and clear. Addresses exactly what was asked with well-formed sentences without providing extra context."
+        },
+        "constraints": {
+            "sentences": "two to three sentences",
+            "words": "30 to 60 words",
+            "allow_questions": false,
+            "allow_volunteering": false
+        },
+        "disclosure_logic": {
+            "vague_ask": "Provide a vague answer.",
+            "grounded_ask": "Reveal specific details relevant to the question.",
+            "assumption_ask": "Answer cautiously; resist unsupported parts.",
+            "global_rules": [
+                "Reveal information incrementally only",
+                "Never summarize full intent",
+                "Focus strictly on the direct scope of the question"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Use well-formed, complete sentences",
+                "Express points clearly",
+                "Address only the specific query"
+            ],
+            "dont": [
+                "Over-explain",
+                "Volunteer unrequested details",
+                "Ask questions back"
+            ]
+        }
+    },
+    "active": {
+        "metadata": {
+            "tone": "Engaged & Expressive",
+            "description": "Conversational and helpful. Proactively discloses one relevant detail from the latent requirements when triggered."
+        },
+        "constraints": {
+            "sentences": "three to five sentences",
+            "words": "50 to 100 words",
+            "allow_questions": false,
+            "allow_volunteering": true
+        },
+        "disclosure_logic": {
+            "vague_ask": "Respond with a high-level overview.",
+            "grounded_ask": "Reveal significant detail plus one related latent requirement.",
+            "assumption_ask": "Clarify while resisting incorrect assumptions.",
+            "global_rules": [
+                "Disclose exactly one extra relevant detail to progress the conversation",
+                "Never reveal the full requirement in one go",
+                "Avoid formal specification tone"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Sound engaged and conversational",
+                "Hint at core priorities without full disclosure",
+                "Add relevant context to the answer"
+            ],
+            "dont": [
+                "Use structured formats (bullet points, lists)",
+                "Invent new constraints not in the gold requirement",
+                "Ask questions back"
+            ]
+        }
     }
-  },
-  {
-    "habit": 2,
-    "communication_style": {
-      "language_proficiency": "Fluent and natural. The user expresses ideas clearly and smoothly.",
-      "communication_habit": "Answers are more complete and slightly expanded. Adds light clarification when helpful.",
-      "linguistic_features": {
-        "sentence_pattern": [
-          "Uses complete and well-formed sentences",
-          "Can combine ideas into one smooth sentence"
-        ],
-        "fluency_errors": [
-          "Mostly grammatically correct",
-          "Occasionally informal but natural"
-        ],
-        "verbosity": [
-          "Adds a bit more context or explanation than necessary",
-          "Expands ideas slightly for clarity"
-        ],
-        "hesitation": [
-          "May still use softeners like 'I think' or 'I guess'",
-          "Sounds thoughtful rather than uncertain"
-        ]
-      },
-      "style_rules": {
-        "do": [
-          "Use smooth and natural conversational English",
-          "Slightly expand ideas with extra clarity",
-          "Keep responses coherent and easy to follow"
-        ],
-        "dont": [
-          "Do not sound overly formal or academic",
-          "Do not introduce structured frameworks or analysis",
-          "Do not change the underlying intent or logic"
-        ]
-      }
-    }
-  }
-]
+}

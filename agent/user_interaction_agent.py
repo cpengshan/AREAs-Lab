@@ -179,7 +179,7 @@ class UserInteractionAgent:
                 "role": "mimic_user",
                 "action": "respond",
                 "input": question,
-                "prompt_template": "feedback_mimic_user_v2.jinja",
+                "prompt_template": "feedback_mimic_user_v3.jinja",
                 "identified_ambiguity": "",
                 "output": user_response,
                 "thought": info.get("user_thought", ""),

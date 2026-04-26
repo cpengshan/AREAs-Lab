@@ -6,7 +6,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zzh2365@emory.edu
 
-REPO_ROOT="/local/scratch/zzh2365/AUNU"
+REPO_ROOT="/Users/tingjin/Documents/AUNU/AUNU"
 
 CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
@@ -15,18 +15,19 @@ MAX_STEPS=15
 OUTPUT_DIR="${REPO_ROOT}/results/user_interaction"
 AGENT_MODEL="gpt-4.1"
 AGENT_MODEL_TEMPERATURE=0.7
+COMMUNICATION_HABIT="passive"              # passive | neutral | active
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 # data_home_dir: folder containing the synthesized_output.json for that dataset
 # dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # multi_news already done — skipping
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
@@ -48,7 +49,7 @@ for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
   DATASET="${ENTRY##*:}"
 
-  PERSONAS=$(python3 - <<PYEOF
+  PERSONAS=$(/Users/tingjin/miniconda3/bin/python3 - <<PYEOF
 import json, sys
 path = "${DATA_DIR}/synthesized_output.json"
 try:
@@ -70,7 +71,7 @@ PYEOF
   echo ""
   echo "=== Dataset: ${DATASET} | Personas: ${PERSONAS} ==="
 
-  python3 "${REPO_ROOT}/agent/run_agent.py" \
+  /Users/tingjin/miniconda3/bin/python3 "${REPO_ROOT}/agent/run_agent.py" \
     --config "$CONFIG" \
     --strategy user_interaction \
     --dataset "$DATASET" \
@@ -80,7 +81,9 @@ PYEOF
     --max_steps "$MAX_STEPS" \
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
-    --log_file_path "$LOG_FILE"
+    --log_file_path "$LOG_FILE" \
+    --use_v2 \
+    --communication_habit "$COMMUNICATION_HABIT"
 
 done
 

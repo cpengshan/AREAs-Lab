@@ -1,7 +1,7 @@
 # AUNUEnv environment config — policy is external
 
 # LLM models
-user_model: gemini-3.1-flash-lite-preview
+user_model: gemini-3.1-pro-preview
 user_model_temperature: 0.7
 
 evaluator_model: gpt-5.4

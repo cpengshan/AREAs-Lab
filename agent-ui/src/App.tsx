@@ -23,7 +23,7 @@ const DEFAULT_DATASETS = [
     "starmpcc_Asclepius-Synthetic-Clinical-Notes",
     "thu-coai_esconv"
 ];
-const DEFAULT_STRATEGIES = ["zero_shot", "persona", "user_interaction", "data_interaction", "hybrid"];
+const DEFAULT_STRATEGIES = ["zero_shot", "zero_shot_with_samples", "zero_shot_with_data_analysis", "zero_shot_with_data_analysis_and_samples", "persona", "user_interaction", "data_interaction", "data_interaction_v2", "hybrid"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 const METRIC_KEYS = [
   "precision",
@@ -39,6 +39,38 @@ async function fetchJson(url: string) {
     throw new Error(`Failed to load ${url} (${res.status})`);
   }
   return res.json();
+}
+
+// user_interaction output has an extra habit-key level: persona → habit → task
+// Flatten it to persona → task so the rest of the UI works uniformly.
+function normalizeOutputJson(json: any): any {
+  if (!json || typeof json !== "object") return json;
+  const result: any = {};
+  for (const [personaKey, personaVal] of Object.entries(json)) {
+    if (personaKey === "args" || typeof personaVal !== "object" || personaVal === null) {
+      result[personaKey] = personaVal;
+      continue;
+    }
+    const firstVal = Object.values(personaVal as object)[0];
+    const isHabitLevel =
+      firstVal !== null &&
+      typeof firstVal === "object" &&
+      !Array.isArray(firstVal) &&
+      !("messages" in (firstVal as object)) &&
+      !("scores" in (firstVal as object));
+
+    if (isHabitLevel) {
+      // merge all habit buckets into a single task map
+      const merged: any = {};
+      for (const habitVal of Object.values(personaVal as object)) {
+        Object.assign(merged, habitVal);
+      }
+      result[personaKey] = merged;
+    } else {
+      result[personaKey] = personaVal;
+    }
+  }
+  return result;
 }
 
 function formatScore(v: any) {
@@ -397,6 +429,45 @@ function ReflectionHistoryView({ messages }: { messages: any[] }) {
   );
 }
 
+function FormatReflectionHistoryView({ history }: { history: any[] }) {
+  if (!history || history.length === 0) return <div style={{ color: "#666" }}>No format reflections found.</div>;
+  return (
+    <div style={{ maxHeight: 520, overflow: "auto", border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
+      {history.map((entry: any, idx: number) => (
+        <div key={idx} style={{ marginBottom: 16, padding: 12, borderRadius: 10, background: "#fafafa", border: "1px solid #eee" }}>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 8, fontWeight: 600 }}>
+            Format Reflection Turn {entry.turn ?? idx + 1}
+          </div>
+          {entry.format_gaps && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#b45309", marginBottom: 4 }}>Format gaps</div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 10 }}>
+                {typeof entry.format_gaps === "string" ? entry.format_gaps : JSON.stringify(entry.format_gaps, null, 2)}
+              </div>
+            </div>
+          )}
+          {entry.alignment_issues && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#b91c1c", marginBottom: 4 }}>Alignment issues</div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 10 }}>
+                {typeof entry.alignment_issues === "string" ? entry.alignment_issues : JSON.stringify(entry.alignment_issues, null, 2)}
+              </div>
+            </div>
+          )}
+          {entry.rewritten_requirement && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#166534", marginBottom: 4 }}>Rewritten requirement</div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: 10 }}>
+                {entry.rewritten_requirement}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DataInspectionHistoryView({ history }: { history: any[] }) {
   const [openIdx, setOpenIdx] = React.useState<number | null>(null);
   if (!history || history.length === 0) return <div style={{ color: "#666" }}>No data inspection history.</div>;
@@ -718,6 +789,7 @@ function StrategyRunPanel({
   const counts = evalTask?.counts || {};
   const conversationHistory = outputTask?.conversation_history || [];
   const dataInspectionHistory = outputTask?.data_inspection_history || [];
+  const formatReflectionHistory = outputTask?.format_reflection_history || [];
 
   const predictedRequirement =
     messages.filter((m: any) => m.role === "mimic_user").slice(-1)[0]?.output ||
@@ -788,6 +860,13 @@ function StrategyRunPanel({
             </div>
           )}
 
+          {formatReflectionHistory.length > 0 && (
+            <div style={panelStyle()}>
+              <h3 style={{ marginTop: 0 }}>Format reflection history</h3>
+              <FormatReflectionHistoryView history={formatReflectionHistory} />
+            </div>
+          )}
+
           <div style={panelStyle()}>
             <h3 style={{ marginTop: 0 }}>Matched pairs</h3>
             <MatchedPairsView pairs={evalTask?.matched_pairs || []} />
@@ -808,16 +887,24 @@ export default function App() {
   const [dataset, setDataset] = useState(DEFAULT_DATASETS[0]);
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
     "zero_shot",
+    "zero_shot_with_samples",
+    "zero_shot_with_data_analysis",
+    "zero_shot_with_data_analysis_and_samples",
     "persona",
     "user_interaction",
     "data_interaction",
+    "data_interaction_v2",
     "hybrid",
   ]);
   const [strategyExperimentIds, setStrategyExperimentIds] = useState<Record<string, string>>({
     zero_shot: DEFAULT_EXPERIMENTS[0],
+    zero_shot_with_samples: DEFAULT_EXPERIMENTS[0],
+    zero_shot_with_data_analysis: DEFAULT_EXPERIMENTS[0],
+    zero_shot_with_data_analysis_and_samples: DEFAULT_EXPERIMENTS[0],
     persona: DEFAULT_EXPERIMENTS[0],
     user_interaction: DEFAULT_EXPERIMENTS[0],
     data_interaction: DEFAULT_EXPERIMENTS[0],
+    data_interaction_v2: DEFAULT_EXPERIMENTS[0],
     hybrid: DEFAULT_EXPERIMENTS[0],
   });
   const [runs, setRuns] = useState<LoadedRun[]>([]);
@@ -845,10 +932,12 @@ export default function App() {
         const evalUrl = `${baseUrl}/${dataset}/${strategy}/${experimentId}/eval_results.json`;
 
         try {
-          const [outputJson, evalJson] = await Promise.all([
+          const [rawOutput, rawEval] = await Promise.all([
             fetchJson(outputUrl),
-            fetchJson(evalUrl),
+            fetchJson(evalUrl).catch(() => null),
           ]);
+          const outputJson = normalizeOutputJson(rawOutput);
+          const evalJson = normalizeOutputJson(rawEval);
 
           nextRuns.push({
             dataset,
@@ -953,7 +1042,7 @@ export default function App() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
                 gap: 12,
               }}
             >

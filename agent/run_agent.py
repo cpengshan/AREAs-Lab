@@ -57,7 +57,13 @@ from AUNUEnv.aunu_env.users.mimic_user_v2 import MimicUserV2
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
 from data_interaction_agent import DataInteractionAgent
+from data_interaction_v2_agent import DataInteractionV2Agent
 from hybrid_agent import HybridAgent
+from zero_shot_variants_agent import (
+    ZeroShotWithDataAnalysisAgent,
+    ZeroShotWithSamplesAgent,
+    ZeroShotWithDataAnalysisAndSamplesAgent,
+)
 
 RESULTS_DIR = os.path.join(_AGENT_DIR, "results")
 DATA_SYNTHESIZED_DIR = os.path.join(_REPO_ROOT, "AUNUEnv/data/data_synthesized")
@@ -81,7 +87,11 @@ def parse_args():
     )
     parser.add_argument(
         "--strategy",
-        choices=["zero_shot", "user_interaction", "data_interaction", "hybrid"],
+        choices=[
+            "zero_shot", "zero_shot_with_data_analysis", "zero_shot_with_samples",
+            "zero_shot_with_data_analysis_and_samples",
+            "user_interaction", "data_interaction", "data_interaction_v2", "hybrid",
+        ],
         default="zero_shot",
         help="Agent strategy (default: zero_shot)",
     )
@@ -120,6 +130,8 @@ def parse_args():
     )
     parser.add_argument("--output_dir", type=str, default=None,
                         help="Override output directory for results")
+    parser.add_argument("--exp_id", type=int, default=None,
+                        help="Resume an existing ExperimentN instead of creating a new one")
     parser.add_argument("--log_file_path", type=str, default=None,
                         help="Path to log file (default: auto-generated in results/)")
     parser.add_argument("--verbose", action="store_true")
@@ -181,11 +193,16 @@ def _synthesized_path(dataset: str) -> str:
 # Experiment runner
 # ---------------------------------------------------------------------------
 
-def make_exp_dir(base_dir: str) -> str:
-    exp_id = 1
-    while os.path.exists(os.path.join(base_dir, f"Experiment{exp_id}")):
-        exp_id += 1
-    exp_dir = os.path.join(base_dir, f"Experiment{exp_id}")
+def make_exp_dir(base_dir: str, exp_id: int | None = None) -> str:
+    if exp_id is not None:
+        exp_dir = os.path.join(base_dir, f"Experiment{exp_id}")
+        if not os.path.exists(exp_dir):
+            raise FileNotFoundError(f"Experiment directory not found: {exp_dir}")
+        return exp_dir
+    next_id = 1
+    while os.path.exists(os.path.join(base_dir, f"Experiment{next_id}")):
+        next_id += 1
+    exp_dir = os.path.join(base_dir, f"Experiment{next_id}")
     os.makedirs(exp_dir)
     return exp_dir
 
@@ -221,7 +238,7 @@ def _format_eval_result(log: dict) -> dict:
         return {"error": "no eval result"}
 
     comparison = eval_result.get("comparison", {})
-    return {
+    result = {
         "predicted_units": eval_result.get("predicted_units", []),
         "ground_truth_units": eval_result.get("gold_units", []),
         "matched_pairs": comparison.get("matched_pairs", []),
@@ -233,6 +250,9 @@ def _format_eval_result(log: dict) -> dict:
         "counts": eval_result.get("counts", {}),
         "scores": eval_result.get("scores", {}),
     }
+    if log.get("intermediate_evals"):
+        result["intermediate_evals"] = log["intermediate_evals"]
+    return result
 
 
 def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnvConfig", task_num: int) -> dict:
@@ -272,7 +292,11 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
              "content": e["content"], "thought": e.get("thought", "")}
             for e in log["conversation_history"]
         ]
-    if args.strategy == "data_interaction" and log.get("data_inspection_history"):
+    if args.strategy == "data_interaction_v2" and log.get("format_reflection_history"):
+        result["format_reflection_history"] = log["format_reflection_history"]
+    if args.strategy == "data_interaction_v2" and log.get("intermediate_evals"):
+        result["intermediate_evals"] = log["intermediate_evals"]
+    if args.strategy in ("data_interaction", "data_interaction_v2") and log.get("data_inspection_history"):
         result["data_inspection_history"] = [
             {"inspection_idx": e["inspection_idx"], "timestamp": e.get("timestamp", ""),
              "step": e["step"], "query": e.get("query", ""),
@@ -284,6 +308,7 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         result["router_history"] = log.get("router_history", [])
         result["user_interactions"] = log.get("user_interactions", [])
         result["data_interactions"] = log.get("data_interactions", [])
+        result["format_reflection_history"] = log.get("format_reflection_history", [])
     return result
 
 
@@ -353,28 +378,32 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         habit_dict = None
         habit_key = None
 
-    # Top-level output structure
-    output = {
-        "args": {
-            "strategy_aunu": args.strategy,
-            "aunu_model": cfg.agent_model,
-            "mimic_model": cfg.user_model,
-            "evaluator_model": cfg.evaluator_model,
-            "persona": args.persona,
-            "communication_habit": args.communication_habit if args.use_v2 else None,
-            "dataset": cfg.dataset_name,
-            "input_type": args.input_type,
-            "max_turns": max_turns,
-            "max_steps": cfg.max_steps,
-            "user_mode": cfg.user_mode,
-            "total_cost": 0.0,
-        }
-    }
-
     out_path = os.path.join(exp_dir, "output.json")
     eval_path = os.path.join(exp_dir, "eval_results.json")
 
-    # Load existing eval_results if resuming
+    # Load existing results if resuming, otherwise start fresh
+    if os.path.exists(out_path):
+        with open(out_path) as f:
+            output = json.load(f)
+        logger.info(f"Loaded existing output.json from {out_path} — will skip completed tasks")
+    else:
+        output = {
+            "args": {
+                "strategy_aunu": args.strategy,
+                "aunu_model": cfg.agent_model,
+                "mimic_model": cfg.user_model,
+                "evaluator_model": cfg.evaluator_model,
+                "persona": args.persona,
+                "communication_habit": args.communication_habit if args.use_v2 else None,
+                "dataset": cfg.dataset_name,
+                "input_type": args.input_type,
+                "max_turns": max_turns,
+                "max_steps": cfg.max_steps,
+                "user_mode": cfg.user_mode,
+                "total_cost": 0.0,
+            }
+        }
+
     eval_output: dict = {}
     if os.path.exists(eval_path):
         with open(eval_path) as f:
@@ -419,8 +448,20 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             if args.strategy == "zero_shot":
                 agent = ZeroShotAgent.from_config(cfg)
                 log = agent.run(env, task)
+            elif args.strategy == "zero_shot_with_data_analysis":
+                agent = ZeroShotWithDataAnalysisAgent.from_config(cfg)
+                log = agent.run(env, task)
+            elif args.strategy == "zero_shot_with_samples":
+                agent = ZeroShotWithSamplesAgent.from_config(cfg)
+                log = agent.run(env, task)
+            elif args.strategy == "zero_shot_with_data_analysis_and_samples":
+                agent = ZeroShotWithDataAnalysisAndSamplesAgent.from_config(cfg)
+                log = agent.run(env, task)
             elif args.strategy == "data_interaction":
                 agent = DataInteractionAgent.from_config(cfg, max_turns=max_turns)
+                log = agent.run(env, task)
+            elif args.strategy == "data_interaction_v2":
+                agent = DataInteractionV2Agent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task)
             elif args.strategy == "hybrid":
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
@@ -504,7 +545,7 @@ def main():
         RESULTS_DIR, cfg.dataset_name.replace("/", "_"), args.strategy
     )
     os.makedirs(base_dir, exist_ok=True)
-    exp_dir = make_exp_dir(base_dir)
+    exp_dir = make_exp_dir(base_dir, args.exp_id)
 
     log_path = args.log_file_path or os.path.join(exp_dir, "run.log")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)

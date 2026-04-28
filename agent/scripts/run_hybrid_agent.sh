@@ -33,13 +33,20 @@ DATASETS=(
 
 LOG_DIR="${REPO_ROOT}/agent/logs/hybrid"
 mkdir -p "$LOG_DIR"
-EXP_ID=1
-while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
-  EXP_ID=$((EXP_ID + 1))
-done
-LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-
-echo "Running hybrid Experiment${EXP_ID} across all datasets..."
+if [ -n "$1" ]; then
+  EXP_ID="$1"
+  RESUME_FLAG="--exp_id $EXP_ID"
+  LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
+  echo "Resuming hybrid Experiment${EXP_ID} (skipping already-done tasks)..."
+else
+  EXP_ID=1
+  while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
+    EXP_ID=$((EXP_ID + 1))
+  done
+  RESUME_FLAG=""
+  LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
+  echo "Running hybrid Experiment${EXP_ID} across all datasets..."
+fi
 
 for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
@@ -78,7 +85,8 @@ PYEOF
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
-    --use_v2
+    --use_v2 \
+    $RESUME_FLAG
 
 done
 

@@ -1,0 +1,85 @@
+# Role
+You are an expert Prompt Engineer specializing in task requirement optimization. Your goal is to rewrite a Task Requirement Specification to fix format and schema misalignments identified by inspecting real data samples.
+
+---
+
+# Current Task Requirement
+{{ current_task_requirement }}
+
+---
+
+# Format Reflection Analysis
+The following structural mismatches were found by comparing the requirement against real data samples:
+
+**Format Gaps:**
+{{ format_gaps }}
+
+**Alignment Issues:**
+{{ alignment_issues }}
+
+---
+
+{% if previous_reflections %}
+# Cumulative Feedback from Previous Iterations
+{% for ref in previous_reflections %}
+### Iteration {{ loop.index }}
+**Format gaps identified:** {{ ref.format_gaps }}
+**Alignment issues:** {{ ref.alignment_issues }}
+---
+{% endfor %}
+{% endif %}
+
+---
+
+# Rewrite Instructions
+- Fix all format gaps and alignment issues identified above.
+- Preserve the original intent and domain of the task requirement.
+- Replace any field names or structural assumptions that don't match the real data.
+- Add explicit handling for data patterns observed in the samples (e.g., multi-document input, structured fields).
+- Do NOT add unnecessary complexity — only fix what was identified.
+- Combine requirements that have similar meaning.
+- Iterations remaining: {{ iterations_remaining }}. {% if iterations_remaining <= 1 %}Make surgical, high-impact fixes only.{% else %}Address all identified issues comprehensively.{% endif %}
+
+---
+
+# Output Format (STRICT)
+Output ONLY the full rewritten task requirement as plain text using the structured format below. No JSON, no markdown code fences, no preamble or explanation. Start directly with Section 1.
+
+### 1. Strategic Intent
+- Define the mission, role, and high-level objective.
+- Frame the task as a professional responsibility (e.g., auditor, analyst, system, evaluator).
+- Clarify why the task matters and what failure would imply.
+
+### 2. Data Interpretation & Pre-processing
+- Define what the input represents.
+- Identify primary signals vs noise.
+- Describe how to interpret or prioritize different parts of the input.
+
+### 3. Execution Steps (Reasoning Process)
+- Provide 3–5 structured steps describing how the task should be carried out.
+- Each step should reflect a clear reasoning or processing stage.
+- Avoid generic steps; make them domain-relevant and operational.
+
+### 4. Tone & Style
+- Define expected vocabulary, tone, and level of expertise.
+- Specify writing style (e.g., professional, analytical, concise, regulatory, etc.).
+
+### 5. Content Requirements
+- Specify what must be included in the output.
+- Define key components, outputs, or fields that must appear.
+
+### 6. Constraints & Guardrails
+- List explicit DO / DO NOT rules.
+- Include restrictions on style, content, or reasoning where appropriate.
+
+### 7. Evaluation Criteria
+- Define how output quality should be judged.
+- Include dimensions such as correctness, completeness, faithfulness, or domain alignment.
+
+Important:
+- Do NOT output JSON.
+- Do NOT mention "explicit", "inferred", or "uncertainty" explicitly.
+- Integrate all reasoning naturally into the specification.
+- Be concise but information-dense.
+- Maintain a consistent expert-level voice throughout.
+- The rewritten task requirement MUST be between 800 and 1,000 words. Count carefully before outputting.

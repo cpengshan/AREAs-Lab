@@ -10,7 +10,7 @@ REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_TURNS=4                                       # data-refinement rounds
+MAX_TURNS=10                                       # data-refinement rounds
 MAX_STEPS=15
 OUTPUT_DIR="${REPO_ROOT}/results/data_interaction"
 AGENT_MODEL="claude-haiku-4-5-20251001"
@@ -20,13 +20,13 @@ AGENT_MODEL_TEMPERATURE=0.7
 # data_home_dir: folder containing the synthesized_output.json for that dataset
 # dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
@@ -36,13 +36,20 @@ DATASETS=(
 
 LOG_DIR="${REPO_ROOT}/agent/logs/data_interaction"
 mkdir -p "$LOG_DIR"
-EXP_ID=1
-while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
-  EXP_ID=$((EXP_ID + 1))
-done
-LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-
-echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
+if [ -n "$1" ]; then
+  EXP_ID="$1"
+  RESUME_FLAG="--exp_id $EXP_ID"
+  LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
+  echo "Resuming data_interaction Experiment${EXP_ID} (skipping already-done tasks)..."
+else
+  EXP_ID=1
+  while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
+    EXP_ID=$((EXP_ID + 1))
+  done
+  RESUME_FLAG=""
+  LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
+  echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
+fi
 
 for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
@@ -80,7 +87,8 @@ PYEOF
     --max_steps "$MAX_STEPS" \
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
-    --log_file_path "$LOG_FILE"
+    --log_file_path "$LOG_FILE" \
+    $RESUME_FLAG
 
 done
 

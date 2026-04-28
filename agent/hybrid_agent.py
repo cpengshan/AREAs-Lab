@@ -37,12 +37,12 @@ from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
 logger = logging.getLogger(__name__)
 
 _PROMPTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "prompts"))
-_ROUTER_TEMPLATE     = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_router_v2.jinja")
-_EXECUTE_TEMPLATE    = os.path.join(_PROMPTS_DIR, "data/data_interaction_execute.jinja")
-_REFLECT_TEMPLATE    = os.path.join(_PROMPTS_DIR, "data/data_interaction_reflect.jinja")
-_USER_Q_TEMPLATE     = os.path.join(_PROMPTS_DIR, "user/user_interaction.jinja")
-_SYNTHESIS_TEMPLATE  = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_synthesis.jinja")
-_GUIDELINE_TEMPLATE  = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_guideline_update.jinja")
+_ROUTER_TEMPLATE         = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_router_v2.jinja")
+_FORMAT_REFLECT_TEMPLATE = os.path.join(_PROMPTS_DIR, "data/data_format_reflect.jinja")
+_FORMAT_REWRITE_TEMPLATE = os.path.join(_PROMPTS_DIR, "data/data_format_rewrite.jinja")
+_USER_Q_TEMPLATE         = os.path.join(_PROMPTS_DIR, "user/user_interaction.jinja")
+_SYNTHESIS_TEMPLATE      = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_synthesis.jinja")
+_GUIDELINE_TEMPLATE      = os.path.join(_PROMPTS_DIR, "hybrid/hybrid_guideline_update.jinja")
 
 _N_SAMPLES = 3
 
@@ -58,6 +58,7 @@ class HybridState(TypedDict, total=False):
     data_interactions: list       # [{turn, reflection}]          — full history for synthesis
     guideline: str                # running structured summary passed to router each turn
     router_history: list          # [{turn, action, reason, target_gap}]
+    format_reflection_history: list  # [{turn, format_gaps, alignment_issues, rewritten_requirement}]
 
 
 class HybridAgent:
@@ -76,9 +77,8 @@ class HybridAgent:
         model_name: LLM model identifier used for all agent LLM calls.
         max_iterations: Maximum routing iterations before forced synthesis.
         temperature: Sampling temperature.
-        max_tokens: Max output tokens for requirement generation.
-        execute_max_tokens: Max output tokens for per-sample execution.
-        reflect_max_tokens: Max output tokens for the reflection step.
+        max_tokens: Max output tokens for requirement generation / rewriting.
+        reflect_max_tokens: Max output tokens for the format-reflection step.
         question_max_tokens: Max output tokens for question generation.
         router_max_tokens: Max output tokens for the router decision.
     """
@@ -89,7 +89,6 @@ class HybridAgent:
         max_iterations: int = 6,
         temperature: float = 0.0,
         max_tokens: int = 4096,
-        execute_max_tokens: int = 1024,
         reflect_max_tokens: int = 1024,
         question_max_tokens: int = 512,
         router_max_tokens: int = 256,
@@ -98,7 +97,6 @@ class HybridAgent:
         self.max_iterations = max_iterations
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.execute_max_tokens = execute_max_tokens
         self.reflect_max_tokens = reflect_max_tokens
         self.question_max_tokens = question_max_tokens
         self.router_max_tokens = router_max_tokens
@@ -213,53 +211,28 @@ class HybridAgent:
         return result["output"]
 
     def data_node(self, state: HybridState) -> dict:
-        """Sample data, execute current requirement, reflect, update requirement."""
+        """Sample data, reflect on format/schema alignment, rewrite requirement (v2 approach)."""
         env = self._env
         env_state = env.state
         turn = state.get("current_turn", 1)
         current_req = state.get("task_requirement_final", env_state.task.elevator_pitch)
         messages: list[Message] = []
 
-        # Sample data
+        # Sample raw data rows
         obs, _, _, info = env.step(inspect_data(n_samples=_N_SAMPLES))
         raw_samples = info.get("data_samples", [])
-        input_col = env_state.data_inspections[-1].get("input_col") if env_state.data_inspections else None
+        logger.info(f"[Hybrid] Data turn {turn}: sampled {len(raw_samples)} rows")
 
-        # Execute current requirement on each sample
-        sample_data = []
-        for sample in raw_samples:
-            input_text = sample.get(input_col, str(sample)) if input_col else str(sample)
-            start = datetime.now(timezone.utc).isoformat()
-            exec_prompt = render_template(
-                _EXECUTE_TEMPLATE,
-                task_requirement=current_req,
-                input=input_text,
-            )
-            exec_result = call_llm(self.model_name, exec_prompt,
-                                   max_tokens=self.execute_max_tokens,
-                                   temperature=self.temperature)
-            end = datetime.now(timezone.utc).isoformat()
-            sample_data.append({
-                "input": input_text,
-                "predicted_output": exec_result["output"],
-                "ground_truth_notes": "",
-            })
-            messages.append(_make_msg(
-                start, end, "aunu_agent", "execute",
-                exec_prompt, "data/data_interaction_execute.jinja",
-                "", exec_result["output"], self.model_name, exec_result,
-            ))
-
-        # Reflect on execution outputs
+        # Reflect on format/schema alignment between requirement and data
         previous_reflections = [
-            {"output_evaluation": d.get("reflection", ""), "potential_ambiguity": d.get("reflection", "")}
-            for d in state.get("data_interactions", [])
+            {"format_gaps": d.get("format_gaps", ""), "alignment_issues": d.get("alignment_issues", "")}
+            for d in state.get("format_reflection_history", [])
         ]
         start = datetime.now(timezone.utc).isoformat()
         reflect_prompt = render_template(
-            _REFLECT_TEMPLATE,
+            _FORMAT_REFLECT_TEMPLATE,
             current_task_requirement=current_req,
-            sample_data=sample_data,
+            data_samples=raw_samples,
             previous_reflections=previous_reflections if previous_reflections else None,
         )
         reflect_result = call_llm(self.model_name, reflect_prompt,
@@ -267,23 +240,52 @@ class HybridAgent:
                                   temperature=self.temperature)
         end = datetime.now(timezone.utc).isoformat()
 
-        reflection_parsed = parse_json_output(reflect_result["output"])
-        output_evaluation = reflection_parsed.get("output_evaluation", reflect_result["output"])
-        potential_ambiguity = reflection_parsed.get("potential_ambiguity", "")
-        combined_reflection = f"Output evaluation: {output_evaluation}\nPotential ambiguity: {potential_ambiguity}"
+        reflection = parse_json_output(reflect_result["output"])
+        format_gaps = reflection.get("format_gaps", reflect_result["output"])
+        alignment_issues = reflection.get("alignment_issues", "")
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "reflect",
-            reflect_prompt, "data/data_interaction_reflect.jinja",
-            potential_ambiguity, reflect_result["output"], self.model_name, reflect_result,
+            start, end, "aunu_agent", "format_reflect",
+            reflect_prompt, "data/data_format_reflect.jinja",
+            alignment_issues, reflect_result["output"], self.model_name, reflect_result,
         ))
-        logger.info(f"[Hybrid] Data turn {turn}: reflected | ambiguity={potential_ambiguity[:80]}")
+        logger.info(f"[Hybrid] Data turn {turn}: format reflected | gaps={str(format_gaps)[:80]}")
+
+        # Rewrite requirement to fix identified gaps
+        start = datetime.now(timezone.utc).isoformat()
+        rewrite_prompt = render_template(
+            _FORMAT_REWRITE_TEMPLATE,
+            current_task_requirement=current_req,
+            format_gaps=format_gaps,
+            alignment_issues=alignment_issues,
+            previous_reflections=previous_reflections if previous_reflections else None,
+            iterations_remaining=self.max_iterations - turn,
+        )
+        rewrite_result = call_llm(self.model_name, rewrite_prompt,
+                                  max_tokens=self.max_tokens, temperature=self.temperature)
+        end = datetime.now(timezone.utc).isoformat()
+        refined_req = rewrite_result["output"]
+        logger.info(f"[Hybrid] Data turn {turn}: rewritten ({len(refined_req)} chars)")
+
+        messages.append(_make_msg(
+            start, end, "aunu_agent", "rewrite",
+            rewrite_prompt, "data/data_format_rewrite.jinja",
+            "", refined_req, self.model_name, rewrite_result,
+        ))
+
+        new_reflection_entry = {
+            "turn": turn,
+            "format_gaps": format_gaps,
+            "alignment_issues": alignment_issues,
+            "rewritten_requirement": refined_req,
+        }
+        updated_format_reflection_history = list(state.get("format_reflection_history", [])) + [new_reflection_entry]
 
         new_data_entry = {
             "turn": turn,
-            "reflection": combined_reflection,
-            "output_evaluation": output_evaluation,
-            "potential_ambiguity": potential_ambiguity,
+            "reflection": f"Format gaps: {format_gaps}\nAlignment issues: {alignment_issues}",
+            "format_gaps": format_gaps,
+            "alignment_issues": alignment_issues,
         }
         updated_data_interactions = list(state.get("data_interactions", [])) + [new_data_entry]
 
@@ -294,7 +296,8 @@ class HybridAgent:
         return {
             "messages": messages,
             "data_interactions": updated_data_interactions,
-            "task_requirement_final": current_req,
+            "format_reflection_history": updated_format_reflection_history,
+            "task_requirement_final": refined_req,
             "guideline": updated_guideline,
         }
 
@@ -486,17 +489,27 @@ class HybridAgent:
             "data_interactions": [],
             "guideline": "",
             "router_history": [],
+            "format_reflection_history": [],
         }
 
         app = self.build_graph()
         all_messages = []
+        final_state: HybridState = {}
         for output in app.stream(initial_state):
             for _, state_update in output.items():
                 if "messages" in state_update:
                     all_messages.extend(state_update["messages"])
+                for key in ("format_reflection_history", "router_history",
+                            "user_interactions", "data_interactions"):
+                    if key in state_update:
+                        final_state[key] = state_update[key]
 
         log = env.get_trajectory_log()
         log["agent_messages"] = [dict(m) for m in all_messages]
+        log["format_reflection_history"] = final_state.get("format_reflection_history", [])
+        log["router_history"] = final_state.get("router_history", [])
+        log["user_interactions"] = final_state.get("user_interactions", [])
+        log["data_interactions"] = final_state.get("data_interactions", [])
         return log
 
 

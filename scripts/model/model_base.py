@@ -32,6 +32,10 @@ PRICING_DATA = {
         "claude-4.6-opus": {"input": 5.00, "output": 25.00},
         "claude-4.6-sonnet": {"input": 3.00, "output": 15.00},
         "claude-4.5-haiku": {"input": 0.80, "output": 4.00}
+    },
+    "DeepSeek": {
+        "deepseek-v4-pro": {"input": 1.74, "output": 3.48},
+        "deepseek-v4-flash": {"input": 0.14, "output": 0.28}
     }
 }
 
@@ -62,7 +66,31 @@ class OpenAIProvider(LLMProvider):
                
         return {"output": response.choices[0].message.content, "cost": cost}
 
-class GeminiProvider:
+class DeepSeekProvider(LLMProvider):
+    def __init__(self):
+        # DeepSeek uses an OpenAI-compatible API
+        self.client = OpenAI(
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            base_url="https://api.deepseek.com"
+        )
+
+    def generate(self, model_name: str, prompt: str, **kwargs) -> Dict[str, Any]:
+        response = self.client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs
+        )
+        usage = response.usage
+        prices = PRICING_DATA["DeepSeek"][model_name]
+        
+        # Note: If DeepSeek v4 implements prompt caching discounts, 
+        # you can add 'usage.prompt_cache_hit_tokens' logic here.
+        cost = (usage.prompt_tokens / 1e6 * prices["input"]) + \
+               (usage.completion_tokens / 1e6 * prices["output"])
+               
+        return {"output": response.choices[0].message.content, "cost": cost}
+
+class GeminiProvider(LLMProvider):
     def __init__(self):
         # The new SDK uses a Client object
         self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -148,9 +176,13 @@ class LLM:
             return GeminiProvider()
         elif model_name in PRICING_DATA["Anthropic"]:
             return AnthropicProvider()
+        elif model_name in PRICING_DATA["DeepSeek"]:
+            return DeepSeekProvider()
         else:
             valid_models = [m for p in PRICING_DATA.values() for m in p.keys()]
             raise ValueError(f"Model '{model_name}' not supported. Valid models: {valid_models}")
+
+
 
     def generate(self, prompt: str, use_cache: bool = False, **kwargs) -> Dict[str, Any]:
         """
@@ -168,14 +200,11 @@ class LLM:
         # 1. Check cache ONLY if use_cache is True
         if use_cache and cache_key in self.cache:
             return self.cache[cache_key]
-
         try:
             result = self.provider.generate(self.model_name, prompt, **kwargs)
-            
             # 2. Store in cache ONLY if use_cache is True
             if use_cache:
                 self.cache[cache_key] = result
-                
             return result
         except Exception as e:
             return {
@@ -189,9 +218,6 @@ class LLM:
         """
         # Pass use_cache into the partial function so all batch items respect the flag
         func = partial(self.generate, use_cache=use_cache, **kwargs)
-        
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             results = list(executor.map(func, prompts))
-            
         return results
-

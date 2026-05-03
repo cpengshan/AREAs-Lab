@@ -79,7 +79,7 @@ class AUNUEnvConfig:
         # Auto-resolve dataset paths from dataset_name when not explicitly set.
         if self.dataset_name and not self.dataset_path:
             self.dataset_path = os.path.join(
-                _DATA_SYNTHESIZED_ROOT, self.dataset_name, "synthesized_output.json"
+                _DATA_SYNTHESIZED_ROOT, self.dataset_name, "synthesized_output_2.3.json"
             )
         if self.dataset_name and not self.data_csv_path:
             self.data_csv_path = os.path.join(

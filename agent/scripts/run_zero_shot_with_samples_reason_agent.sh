@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=aunu_zero_shot_with_samples_reason
+#SBATCH --job-name=data
 #SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/zero_shot_with_samples_reason/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
@@ -28,10 +28,10 @@ DATASETS=(
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/zero_shot_with_samples_reason"
@@ -57,7 +57,7 @@ for ENTRY in "${DATASETS[@]}"; do
 
   PERSONAS=$(python3 - <<PYEOF
 import json, sys
-path = "${DATA_DIR}/synthesized_output.json"
+path = "${DATA_DIR}/synthesized_output_2.3.json"
 try:
     with open(path) as f:
         d = json.load(f)

@@ -12,14 +12,14 @@ CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
 MAX_STEPS=5
 OUTPUT_DIR="${REPO_ROOT}/results/zero_shot"
-AGENT_MODEL="gemini-3.1-pro-preview"
+AGENT_MODEL="claude-haiku-4-5-20251001"
 AGENT_MODEL_TEMPERATURE=0.4
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 # data_home_dir: folder containing the synthesized_output.json for that dataset
 # dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
@@ -29,8 +29,8 @@ DATASETS=(
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/zero_shot"
@@ -56,7 +56,7 @@ for ENTRY in "${DATASETS[@]}"; do
 
   PERSONAS=$(python3 - <<PYEOF
 import json, sys
-path = "${DATA_DIR}/synthesized_output.json"
+path = "${DATA_DIR}/synthesized_output_2.3.json"
 try:
     with open(path) as f:
         d = json.load(f)

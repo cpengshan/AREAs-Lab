@@ -57,7 +57,7 @@ for ENTRY in "${DATASETS[@]}"; do
 
   PERSONAS=$(python3 - <<PYEOF
 import json, sys
-path = "${DATA_DIR}/synthesized_output.json"
+path = "${DATA_DIR}/synthesized_output_2.3.json"
 try:
     with open(path) as f:
         d = json.load(f)

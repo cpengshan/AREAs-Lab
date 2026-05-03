@@ -32,4 +32,5 @@ class AgentState(TypedDict, total=False):
     current_turn: int          # current clarification / refinement turn
     zero_shot_draft: str       # zero-shot draft cached for use in prediction
     previous_reflections: list  # accumulated reflect outputs (data_interaction only)
-    intermediate_evals: list    # periodic eval snapshots every N turns (data_interaction_v2)
+    intermediate_evals: list    # periodic eval snapshots every N turns (data_interaction_v2/v3)
+    rewrite_history: list       # per-rewrite {turn, requirement, scores, counts} (data_interaction_v3)

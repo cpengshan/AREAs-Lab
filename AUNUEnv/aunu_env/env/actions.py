@@ -43,14 +43,21 @@ def ask_user(question: str) -> dict:
     return {"type": ACTION_ASK_USER, "question": question}
 
 
-def inspect_data(n_samples: int = 3, query: str = "") -> dict:
+VALID_SPLITS = {"defining_instances", "non_defining_instances", "all"}
+
+
+def inspect_data(n_samples: int = 3, query: str = "", split: str = "all") -> dict:
     """Create an inspect_data action.
 
     Args:
-        n_samples: Number of CSV rows to sample.
+        n_samples: Number of data instances to sample.
         query: Optional description of what to look for (informational only).
+        split: Which subset to sample from — 'defining_instances',
+            'non_defining_instances', or 'all'.
     """
-    return {"type": ACTION_INSPECT_DATA, "n_samples": n_samples, "query": query}
+    if split not in VALID_SPLITS:
+        raise ValueError(f"split must be one of {sorted(VALID_SPLITS)}, got '{split}'")
+    return {"type": ACTION_INSPECT_DATA, "n_samples": n_samples, "query": query, "split": split}
 
 
 def propose_requirement_update(updated_requirement: str) -> dict:
@@ -94,6 +101,10 @@ def validate_action(action: Any) -> None:
         )
     if action_type == ACTION_ASK_USER and "question" not in action:
         raise ValueError("ask_user action requires a 'question' field")
+    if action_type == ACTION_INSPECT_DATA:
+        split = action.get("split", "all")
+        if split not in VALID_SPLITS:
+            raise ValueError(f"inspect_data 'split' must be one of {sorted(VALID_SPLITS)}, got '{split}'")
     if action_type == ACTION_PROPOSE_UPDATE and "updated_requirement" not in action:
         raise ValueError("propose_requirement_update action requires 'updated_requirement'")
     if action_type == ACTION_FINISH and "final_requirement" not in action:

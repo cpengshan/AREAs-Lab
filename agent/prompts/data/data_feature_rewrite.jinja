@@ -1,5 +1,5 @@
 # Role
-You are an expert Prompt Engineer specializing in task requirement optimization. Your goal is to rewrite a Task Requirement Specification to fix format and schema misalignments identified by inspecting real data samples.
+You are an expert Prompt Engineer specializing in task requirement optimization. Your goal is to rewrite a Task Requirement Specification to resolve the ambiguity identified by comparing it against real dataset features.
 
 ---
 
@@ -8,14 +8,9 @@ You are an expert Prompt Engineer specializing in task requirement optimization.
 
 ---
 
-# Format Reflection Analysis
-The following structural mismatches were found by comparing the requirement against real data samples:
-
-**Format Gaps:**
-{{ format_gaps }}
-
-**Alignment Issues:**
-{{ alignment_issues }}
+# Identified Ambiguity
+**Potential Ambiguity:** {{ potential_ambiguity }}
+**Reason:** {{ reason }}
 
 ---
 
@@ -23,8 +18,8 @@ The following structural mismatches were found by comparing the requirement agai
 # Cumulative Feedback from Previous Iterations
 {% for ref in previous_reflections %}
 ### Iteration {{ loop.index }}
-**Format gaps identified:** {{ ref.format_gaps }}
-**Alignment issues:** {{ ref.alignment_issues }}
+**Potential Ambiguity:** {{ ref.potential_ambiguity }}
+**Reason:** {{ ref.reason }}
 ---
 {% endfor %}
 {% endif %}
@@ -32,12 +27,10 @@ The following structural mismatches were found by comparing the requirement agai
 ---
 
 # Rewrite Instructions
-- Fix all format gaps and alignment issues identified above — but **only** those that are actively contradicted by the data samples.
-- **Preserve** any requirement elements that describe dataset features which were not observed in the small sample but are plausibly present in the full dataset (e.g., separator tokens, rare field values, edge-case structural patterns). Absence from the sample is NOT a reason to remove a claim.
+- Resolve the identified ambiguity precisely — add, clarify, or restructure the relevant section.
+- Fix all ambiguities accumulated across previous iterations as well.
 - Preserve the original intent and domain of the task requirement.
-- Replace field names or structural assumptions only if they are directly contradicted by the samples.
-- Add explicit handling for data patterns that are clearly and consistently present in the samples.
-- Do NOT add unnecessary complexity — only fix what was identified as a true contradiction.
+- Do NOT introduce new constraints beyond what the data features and ambiguity analysis justify.
 - Combine requirements that have similar meaning.
 - Iterations remaining: {{ iterations_remaining }}. {% if iterations_remaining <= 1 %}Make surgical, high-impact fixes only.{% else %}Address all identified issues comprehensively.{% endif %}
 

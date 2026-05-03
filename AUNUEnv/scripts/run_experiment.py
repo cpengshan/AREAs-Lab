@@ -85,10 +85,15 @@ def run_experiment(config: AUNUEnvConfig, policy_factory: Callable) -> dict:
         persona_config=config.persona_config if config.user_mode == "persona" else None,
         temperature=config.effective_user_temperature,
     )
+    _cache_path = None
+    if config.dataset_path:
+        import os as _os
+        _cache_path = _os.path.join(_os.path.dirname(config.dataset_path), "ground_truth_decompose.json")
     evaluator = AtomicEvaluator(
         model_name=config.evaluator_model,
         temperature=config.effective_evaluator_temperature,
         cache_gold_units=True,
+        cache_path=_cache_path,
     )
     env = AUNUEnv(evaluator=evaluator, max_steps=config.max_steps)
 

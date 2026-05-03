@@ -230,6 +230,7 @@ class DataInteractionV2Agent:
                 "turn": next_turn,
                 "scores": eval_result.get("scores", {}),
                 "counts": eval_result.get("counts", {}),
+                "subcategory_scores": eval_result.get("subcategory_scores", {}),
                 "cost": eval_result.get("cost", 0.0),
             }
             intermediate_evals.append(snapshot)

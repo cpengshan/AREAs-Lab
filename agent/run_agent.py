@@ -58,11 +58,16 @@ from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
 from data_interaction_agent import DataInteractionAgent
 from data_interaction_v2_agent import DataInteractionV2Agent
+from data_interaction_v3_agent import DataInteractionV3Agent
+from data_interaction_v4_agent import DataInteractionV4Agent
+from data_interaction_v5_agent import DataInteractionV5Agent
 from hybrid_agent import HybridAgent
 from zero_shot_variants_agent import (
     ZeroShotWithDataAnalysisAgent,
     ZeroShotWithSamplesAgent,
+    ZeroShotWithSamplesReasonAgent,
     ZeroShotWithDataAnalysisAndSamplesAgent,
+    ZeroShotWithDataSummaryAgent,
 )
 
 RESULTS_DIR = os.path.join(_AGENT_DIR, "results")
@@ -89,8 +94,9 @@ def parse_args():
         "--strategy",
         choices=[
             "zero_shot", "zero_shot_with_data_analysis", "zero_shot_with_samples",
-            "zero_shot_with_data_analysis_and_samples",
-            "user_interaction", "data_interaction", "data_interaction_v2", "hybrid",
+            "zero_shot_with_samples_reason",
+            "zero_shot_with_data_analysis_and_samples", "zero_shot_with_data_summary",
+            "user_interaction", "data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5", "hybrid",
         ],
         default="zero_shot",
         help="Agent strategy (default: zero_shot)",
@@ -134,6 +140,12 @@ def parse_args():
                         help="Resume an existing ExperimentN instead of creating a new one")
     parser.add_argument("--log_file_path", type=str, default=None,
                         help="Path to log file (default: auto-generated in results/)")
+    parser.add_argument(
+        "--split",
+        choices=["defining_instances", "non_defining_instances", "all"],
+        default="all",
+        help="Which subset of data_sampled_2.1.json to sample from (default: all)",
+    )
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
         "--use_v2", action="store_true",
@@ -143,6 +155,11 @@ def parse_args():
         "--communication_habit", type=str, default=None,
         choices=["passive", "neutral", "active"],
         help="Communication habit for MimicUserV2 (passive/neutral/active). Required with --use_v2.",
+    )
+    parser.add_argument(
+        "--seed_requirement_dir", type=str, default=None,
+        help="Path to a prior experiment directory whose output.json task_requirement_final values "
+             "are used as the initial current_task_requirement for hybrid runs (e.g. zero_shot/Experiment10).",
     )
     return parser.parse_args()
 
@@ -249,6 +266,9 @@ def _format_eval_result(log: dict) -> dict:
         "critical_missing": comparison.get("critical_missing", []),
         "counts": eval_result.get("counts", {}),
         "scores": eval_result.get("scores", {}),
+        "gold_categories": eval_result.get("gold_categories", {}),
+        "pred_categories": eval_result.get("pred_categories", {}),
+        "subcategory_scores": eval_result.get("subcategory_scores", {}),
     }
     if log.get("intermediate_evals"):
         result["intermediate_evals"] = log["intermediate_evals"]
@@ -292,15 +312,17 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
              "content": e["content"], "thought": e.get("thought", "")}
             for e in log["conversation_history"]
         ]
-    if args.strategy == "data_interaction_v2" and log.get("format_reflection_history"):
+    if args.strategy in ("data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("format_reflection_history"):
         result["format_reflection_history"] = log["format_reflection_history"]
-    if args.strategy == "data_interaction_v2" and log.get("intermediate_evals"):
+    if args.strategy in ("data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("intermediate_evals"):
         result["intermediate_evals"] = log["intermediate_evals"]
-    if args.strategy in ("data_interaction", "data_interaction_v2") and log.get("data_inspection_history"):
+    if args.strategy in ("data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("rewrite_history"):
+        result["rewrite_history"] = log["rewrite_history"]
+    if args.strategy in ("data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("data_inspection_history"):
         result["data_inspection_history"] = [
             {"inspection_idx": e["inspection_idx"], "timestamp": e.get("timestamp", ""),
              "step": e["step"], "query": e.get("query", ""),
-             "n_samples": e["n_samples"], "row_indices": e["row_indices"],
+             "n_samples": e["n_samples"], "row_indices": e.get("row_indices", []),
              "input_col": e.get("input_col", ""), "samples": e["samples"]}
             for e in log["data_inspection_history"]
         ]
@@ -309,7 +331,41 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         result["user_interactions"] = log.get("user_interactions", [])
         result["data_interactions"] = log.get("data_interactions", [])
         result["format_reflection_history"] = log.get("format_reflection_history", [])
+        result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
+        result["zero_shot_draft"] = log.get("zero_shot_draft", "")
+    if args.strategy == "zero_shot_with_samples_reason" and log.get("modifications") is not None:
+        result["modifications"] = log["modifications"]
     return result
+
+
+def _load_seed_requirements(seed_dir: str) -> dict:
+    """Load task_requirement_final values keyed by (persona_id, task_num) from a prior output.json."""
+    path = os.path.join(seed_dir, "output.json")
+    with open(path) as f:
+        data = json.load(f)
+    seeds: dict = {}
+    for pk, pv in data.items():
+        if pk == "args" or not isinstance(pv, dict):
+            continue
+        for tk, tv in pv.items():
+            if not isinstance(tv, dict):
+                continue
+            # tv is {task_1: result, task_2: result, ...} or a result itself
+            first = next(iter(tv.values()), None)
+            if isinstance(first, dict) and "task_requirement_final" in first:
+                # habit-keyed layer
+                for task_result in tv.values():
+                    if isinstance(task_result, dict) and "task_requirement_final" in task_result:
+                        p = task_result.get("persona", int(pk) if pk.isdigit() else None)
+                        t = task_result.get("task_id")
+                        if p is not None and t is not None:
+                            seeds[(p, t)] = task_result["task_requirement_final"]
+            elif isinstance(tv, dict) and "task_requirement_final" in tv:
+                p = tv.get("persona", int(pk) if pk.isdigit() else None)
+                t = tv.get("task_id")
+                if p is not None and t is not None:
+                    seeds[(p, t)] = tv["task_requirement_final"]
+    return seeds
 
 
 def _sum_costs(output: dict) -> float:
@@ -345,10 +401,14 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
     max_turns = args.max_turns if args.max_turns is not None else 5
     max_iterations = args.max_iterations if args.max_iterations is not None else 6
 
+    _gt_cache_path = None
+    if cfg.dataset_path:
+        _gt_cache_path = os.path.join(os.path.dirname(cfg.dataset_path), "ground_truth_decompose.json")
     evaluator = AtomicEvaluator(
         model_name=cfg.evaluator_model,
         temperature=cfg.effective_evaluator_temperature,
         cache_gold_units=True,
+        cache_path=_gt_cache_path,
     )
     env = AUNUEnv(evaluator=evaluator, max_steps=cfg.max_steps)
 
@@ -377,6 +437,11 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
     else:
         habit_dict = None
         habit_key = None
+
+    seed_requirements: dict = {}
+    if getattr(args, "seed_requirement_dir", None):
+        seed_requirements = _load_seed_requirements(args.seed_requirement_dir)
+        logger.info(f"Loaded {len(seed_requirements)} seed requirements from {args.seed_requirement_dir}")
 
     out_path = os.path.join(exp_dir, "output.json")
     eval_path = os.path.join(exp_dir, "eval_results.json")
@@ -449,13 +514,19 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 agent = ZeroShotAgent.from_config(cfg)
                 log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_data_analysis":
-                agent = ZeroShotWithDataAnalysisAgent.from_config(cfg)
+                agent = ZeroShotWithDataAnalysisAgent.from_config(cfg, split=args.split)
                 log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_samples":
-                agent = ZeroShotWithSamplesAgent.from_config(cfg)
+                agent = ZeroShotWithSamplesAgent.from_config(cfg, split=args.split)
+                log = agent.run(env, task)
+            elif args.strategy == "zero_shot_with_samples_reason":
+                agent = ZeroShotWithSamplesReasonAgent.from_config(cfg, split=args.split)
                 log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_data_analysis_and_samples":
-                agent = ZeroShotWithDataAnalysisAndSamplesAgent.from_config(cfg)
+                agent = ZeroShotWithDataAnalysisAndSamplesAgent.from_config(cfg, split=args.split)
+                log = agent.run(env, task)
+            elif args.strategy == "zero_shot_with_data_summary":
+                agent = ZeroShotWithDataSummaryAgent.from_config(cfg, split=args.split)
                 log = agent.run(env, task)
             elif args.strategy == "data_interaction":
                 agent = DataInteractionAgent.from_config(cfg, max_turns=max_turns)
@@ -463,9 +534,19 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             elif args.strategy == "data_interaction_v2":
                 agent = DataInteractionV2Agent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task)
+            elif args.strategy == "data_interaction_v3":
+                agent = DataInteractionV3Agent.from_config(cfg, max_turns=max_turns)
+                log = agent.run(env, task)
+            elif args.strategy == "data_interaction_v4":
+                agent = DataInteractionV4Agent.from_config(cfg, max_turns=max_turns)
+                log = agent.run(env, task)
+            elif args.strategy == "data_interaction_v5":
+                agent = DataInteractionV5Agent.from_config(cfg, max_turns=max_turns)
+                log = agent.run(env, task)
             elif args.strategy == "hybrid":
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
-                log = agent.run(env, task, user)
+                seed_req = seed_requirements.get((task.persona_id, task_num))
+                log = agent.run(env, task, user, initial_requirement=seed_req)
             else:
                 agent = UserInteractionAgent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task, user)

@@ -42,7 +42,7 @@ Produce an updated Elicitation Guideline that:
 Rules:
 - A finding from `data_interaction` stays in **Pending data findings** until a `user_interaction` explicitly confirms or rejects it.
 - Once the user confirms a pending finding, move it to **Confirmed requirements**.
-- If the user rejects a pending finding, drop it entirely.
+- If the user rejects a pending finding, drop it from the guideline entirely AND add it to a **Rejected Requirements** section so that synthesis can delete any correlated task requirement from the current draft.
 - Do not invent requirements beyond what the interactions have surfaced.
 - Be concise — each bullet should be one sentence.
 
@@ -57,6 +57,10 @@ Output ONLY the updated guideline in the following plain-text structure. No JSON
 
 ## Pending Data Findings (Awaiting User Confirmation)
 - <finding> [PENDING USER CONFIRMATION]
+- ...
+
+## Rejected Requirements
+- <requirement explicitly rejected by the user> [REJECTED — DELETE FROM TASK REQUIREMENT]
 - ...
 
 ## Open Gaps

@@ -33,12 +33,7 @@ Instructions for persona usage:
 - Do not introduce requirements solely from persona unless strongly justified.
 {% endif %}
 
---------------------------------------------------
-Dataset Analysis:
 
-{{ data_analysis | tojson(indent=2) }}
-
---------------------------------------------------
 Data Samples ({{ data_samples | length }} examples from the actual dataset):
 
 {% for item in data_samples %}

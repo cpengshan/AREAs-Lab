@@ -31,16 +31,26 @@ Below are {{ data_samples|length }} raw samples drawn from the dataset. Study th
 
 ---
 
+# Critical Epistemic Rule
+These samples are a **tiny, non-exhaustive slice** of the full dataset. Absence of a feature in the samples does NOT mean it does not exist in the dataset. You must distinguish between two fundamentally different situations:
+
+- **Contradiction**: The samples provide *positive evidence* that a requirement claim is wrong — e.g., a field the requirement names does not exist, a data type is wrong, a structural pattern the requirement assumes is never present even though many samples were checked.
+- **Non-observation**: A feature mentioned in the requirement simply wasn't observed in this small sample — e.g., a separator token, an edge-case field value, a rare structural variant.
+
+**Only flag contradictions.** Do NOT flag non-observations as misalignments. If the requirement mentions a feature (such as a separator token, a field value pattern, or a structural variant) that *could plausibly exist* in the full dataset but wasn't seen in these samples, treat it as valid and leave it alone.
+
+---
+
 # Analysis Protocol
 Evaluate the alignment between the task requirement and the real data using these lenses:
 
-1. **Input Field Mismatch**: Does the requirement reference inputs that don't match actual field names or data types?
-2. **Output Format Incompatibility**: Does the required output format conflict with what the data naturally supports (e.g., requiring fields the data doesn't contain)?
-3. **Unrealistic Constraints**: Does the requirement impose length, structure, or content rules that would be impossible or unnatural given the data?
-4. **Missing Data-Specific Guidance**: Are there patterns in the data (e.g., multi-document inputs, structured fields, domain-specific jargon) that the requirement fails to address?
-5. **Schema Drift**: Does the requirement assume a simpler or different schema than what the data actually has?
+1. **Input Field Mismatch**: Does the requirement reference field names or data types that are *directly contradicted* by the samples (e.g., wrong field name, wrong type)?
+2. **Output Format Incompatibility**: Does the required output format conflict with what the data *demonstrably* supports?
+3. **Unrealistic Constraints**: Does the requirement impose rules that the samples show are *impossible* given this data — not merely unobserved?
+4. **Missing Data-Specific Guidance**: Are there patterns *clearly present* in the samples that the requirement entirely ignores?
+5. **Schema Drift**: Does the requirement assume a schema that is *directly contradicted* by the actual field structure?
 
-Focus on issues **not already addressed** in previous reflections (if any).
+Focus only on issues that are **actively contradicted by evidence in the samples**, not on features absent from this small window. Focus on issues **not already addressed** in previous reflections (if any).
 
 ---
 

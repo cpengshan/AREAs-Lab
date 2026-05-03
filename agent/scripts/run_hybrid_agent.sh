@@ -10,8 +10,8 @@ REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_ITERATIONS=6                                   # max routing iterations per episode
-MAX_STEPS=20
+MAX_ITERATIONS=20                                   # max routing iterations per episode
+MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
 AGENT_MODEL="claude-haiku-4-5-20251001"
 
@@ -47,6 +47,10 @@ else
   LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
   echo "Running hybrid Experiment${EXP_ID} across all datasets..."
 fi
+
+SEED_DIR="${REPO_ROOT}/agent/results/alexfabbri_multi_news/zero_shot/Experiment10"
+SEED_REQUIREMENT_FLAG="--seed_requirement_dir ${SEED_DIR}"
+echo "Seeding initial requirement from: ${SEED_DIR}"
 
 for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
@@ -86,7 +90,9 @@ PYEOF
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
     --use_v2 \
-    $RESUME_FLAG
+    --communication_habit neutral \
+    $RESUME_FLAG \
+    $SEED_REQUIREMENT_FLAG
 
 done
 

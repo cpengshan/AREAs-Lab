@@ -55,6 +55,9 @@ PRICING_DATA = {
 # OpenAI models that require max_completion_tokens instead of max_tokens
 _MAX_COMPLETION_TOKENS_MODELS = {"gpt-5.4", "gpt-5.4-mini", "gpt-5", "gpt-5-mini", "o3"}
 
+# OpenAI models that support the reasoning parameter
+_REASONING_MODELS = {"gpt-5.4", "gpt-5.4-mini"}
+
 
 # ---------------------------------------------------------------------------
 # Provider implementations
@@ -67,11 +70,26 @@ def _openai_generate(model_name: str, prompt: str, **kwargs) -> dict:
     if model_name in _MAX_COMPLETION_TOKENS_MODELS and "max_tokens" in kwargs:
         kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
 
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[{"role": "user", "content": prompt}],
-        **kwargs,
-    )
+    # if model_name in _REASONING_MODELS and "reasoning" not in kwargs:
+    #     kwargs["reasoning"] = {"effort": "minimal"}
+
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs,
+        )
+    except TypeError as e:
+        if "reasoning" in str(e) and "reasoning" in kwargs:
+            logger.warning(f"SDK does not support 'reasoning' param for '{model_name}'; retrying without it.")
+            kwargs.pop("reasoning")
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs,
+            )
+        else:
+            raise
     usage = response.usage
     try:
         prices = PRICING_DATA["OpenAI"][model_name]

@@ -3,6 +3,56 @@
 Reuses the same TP/FP/FN definitions as scripts/evaluation/user_interaction_judge.py.
 """
 
+_SUBCATEGORIES = ("user_specified", "data_specified")
+
+
+def compute_subcategory_scores(
+    comparison: dict,
+    gold_categories: dict[str, str],
+    pred_categories: dict[str, str],
+) -> dict:
+    """Compute per-subcategory precision, recall, F1 and unit counts.
+
+    Args:
+        comparison: Same dict passed to compute_scores (has matched_pairs,
+            ground_truth_units, predicted_units).
+        gold_categories: Maps each gold unit string → "user_specified" | "data_specified".
+        pred_categories: Maps each predicted unit string → "user_specified" | "data_specified".
+
+    Returns:
+        Dict with keys "user_specified" and "data_specified", each containing:
+            n_gt, n_pred, tp, precision, recall, f1.
+    """
+    matched_pairs = comparison.get("matched_pairs", [])
+    gold_units = comparison.get("ground_truth_units", [])
+    pred_units = comparison.get("predicted_units", [])
+
+    # GT units matched (have at least one predicted)
+    matched_gt = {p["ground_truth"] for p in matched_pairs if p.get("predicted")}
+
+    result = {}
+    for cat in _SUBCATEGORIES:
+        gt_in_cat = [u for u in gold_units if gold_categories.get(u) == cat]
+        pred_in_cat = [u for u in pred_units if pred_categories.get(u) == cat]
+
+        n_gt = len(gt_in_cat)
+        n_pred = len(pred_in_cat)
+        tp = sum(1 for u in gt_in_cat if u in matched_gt)
+
+        precision = tp / n_pred if n_pred > 0 else 0.0
+        recall = tp / n_gt if n_gt > 0 else 0.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+        result[cat] = {
+            "n_gt": n_gt,
+            "n_pred": n_pred,
+            "tp": tp,
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1": round(f1, 4),
+        }
+    return result
+
 
 def compute_scores(comparison: dict) -> tuple[dict, dict]:
     """Compute precision, recall, F1, and legacy scores from comparison alignment.

@@ -54,15 +54,14 @@ A requirement may be stated as a **hard rule** only if it is supported by at lea
 2. The same observation appearing in **at least two independent data interaction turns**.
 3. Direct, unambiguous implication of the original user requirement.
 
-If a requirement is observed in only one data interaction turn and not confirmed by user feedback or the original requirement, phrase it as a **conditional guideline** ("When X occurs, consider Y") rather than a hard rule.
-
-**Remove any requirement** that rests solely on a single data sample observation and has no user feedback or original-requirement support — even if it appeared in the current draft.
+**Remove any requirement** that is observed in only one data interaction turn and is not confirmed by user feedback or the original requirement — even if it appeared in the current draft. Do not downgrade such requirements to conditional guidelines; omit them entirely.
 
 ## Synthesis Steps
 Produce the final task requirement specification that:
 - Integrates all user feedback from the interactions above (treat as authoritative ground truth).
 - Integrates data reflections **only when the same observation recurs across multiple turns** or when user feedback corroborates it.
 - Preserves requirements from the current draft that pass the evidence-gating rule above.
+- **Deletes any requirement from the current draft that corresponds to an item marked `[REJECTED — DELETE FROM TASK REQUIREMENT]` in the Elicitation Guideline.** Do not soften or reframe rejected requirements; remove them entirely.
 - Removes requirements that are unsupported, unnecessary, or contradicted by the evidence.
 - Resolves conflicts between user feedback and data reflections: prefer user feedback for intent/preference gaps, prefer data reflections for execution/edge-case gaps.
 - Produces a clean, internally consistent, and complete task requirement specification.

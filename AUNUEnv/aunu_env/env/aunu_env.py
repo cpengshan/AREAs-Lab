@@ -12,18 +12,19 @@ Action space (dict-based):
   finish(final_requirement)
 """
 
+import json
 import logging
 import os
 import random
 from datetime import datetime, timezone
-import pandas as pd
 from typing import Optional
 
-# Root of the AUNUEnv package's data directory: AUNUEnv/data/data_raw/
-_DATA_RAW_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../data/data_raw")
+# Root of the AUNUEnv package's data directory: AUNUEnv/data/data_sampled/
+_DATA_SAMPLED_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../data/data_sampled")
 )
 
+from .actions import VALID_SPLITS
 from ..dataset.schema import TaskInstance
 from ..users import MimicUser
 from ..evaluator.atomic_evaluator import AtomicEvaluator
@@ -54,8 +55,7 @@ class AUNUEnv:
         self.max_steps = max_steps
         self._state: Optional[EpisodeState] = None
         self._user: Optional[MimicUser] = None
-        self._df: Optional[pd.DataFrame] = None
-        self._input_col: Optional[str] = None
+        self._data: Optional[dict] = None  # {defining_instances: [...], non_defining_instances: [...]}
 
     # ------------------------------------------------------------------
     # Public API
@@ -74,8 +74,7 @@ class AUNUEnv:
         """
         self._state = EpisodeState(task=task)
         self._user = user
-        self._df = None
-        self._input_col = None
+        self._data = None
 
         obs = self._build_observation(last_response="")
         info = {
@@ -226,43 +225,55 @@ class AUNUEnv:
     def _handle_inspect_data(self, action: dict) -> tuple[str, float, dict]:
         s = self._state
         n_samples = action.get("n_samples", 3)
+        split = action.get("split", "all")
 
-        if self._df is None:
-            csv_path = s.task.data_csv_path or os.path.join(
-                _DATA_RAW_ROOT, s.task.dataset_name, "sampled_data.csv"
+        if self._data is None:
+            json_path = os.path.join(
+                _DATA_SAMPLED_ROOT, s.task.dataset_name, "data_sampled_2.1.json"
             )
-            if not os.path.exists(csv_path):
+            if not os.path.exists(json_path):
                 raise FileNotFoundError(
-                    f"Dataset CSV not found: {csv_path}. "
-                    f"Expected at AUNUEnv/data/data_raw/{s.task.dataset_name}/sampled_data.csv"
+                    f"Sampled data not found: {json_path}. "
+                    f"Expected at AUNUEnv/data/data_sampled/{s.task.dataset_name}/data_sampled_2.1.json"
                 )
-            self._df = pd.read_csv(csv_path)
-            self._input_col = self._detect_input_col(self._df)
+            with open(json_path, "r", encoding="utf-8") as f:
+                self._data = json.load(f)
 
-        n_samples = min(n_samples, len(self._df))
-        sampled = self._df.sample(n=n_samples, random_state=s.step_count)
+        if split == "all":
+            pool = (
+                self._data.get("defining_instances", [])
+                + self._data.get("non_defining_instances", [])
+            )
+        else:
+            pool = self._data.get(split, [])
+
+        if not pool:
+            raise ValueError(f"No instances found for split='{split}' in dataset '{s.task.dataset_name}'")
+
+        rng = random.Random(s.step_count)
+        n_samples = min(n_samples, len(pool))
+        sampled = rng.sample(pool, n_samples)
         inspected_at = datetime.now(timezone.utc).isoformat()
 
         samples = []
-        for idx, row in sampled.iterrows():
-            sample = {"_row_idx": int(idx)}
-            sample.update({col: str(row[col])[:500] for col in self._df.columns})
+        for i, item in enumerate(sampled):
+            sample = {"_sample_idx": i}
+            sample.update({k: str(v)[:500] for k, v in item.items()})
             samples.append(sample)
 
-        summary = self._format_data_samples(samples)
+        summary = self._format_data_samples(samples, split)
         inspection = {
             "inspection_idx": len(s.data_inspections) + 1,
             "timestamp": inspected_at,
             "step": s.step_count + 1,
             "query": action.get("query", ""),
+            "split": split,
             "n_samples": n_samples,
-            "row_indices": [s["_row_idx"] for s in samples],
-            "input_col": self._input_col,
             "samples": samples,
         }
         s.data_inspections.append(inspection)
 
-        return summary, 0.0, {"data_samples": samples, "row_indices": inspection["row_indices"]}
+        return summary, 0.0, {"data_samples": samples, "split": split}
 
     def _handle_propose_update(self, action: dict) -> tuple[str, float, dict]:
         s = self._state
@@ -316,22 +327,12 @@ class AUNUEnv:
             for e in self._state.interaction_history
         ]
 
-    def _detect_input_col(self, df: pd.DataFrame) -> str:
-        candidates = ["text", "article", "report", "script", "news_text", "document"]
-        for c in candidates:
-            if c in df.columns:
-                return c
-        for col in df.columns:
-            if df[col].dtype == object:
-                return col
-        return df.columns[0]
-
-    def _format_data_samples(self, samples: list) -> str:
-        lines = []
+    def _format_data_samples(self, samples: list, split: str = "all") -> str:
+        lines = [f"[split={split}]"]
         for i, s in enumerate(samples, 1):
-            lines.append(f"--- Sample {i} (row {s.get('_row_idx', i)}) ---")
+            lines.append(f"--- Sample {i} ---")
             for k, v in s.items():
-                if k == "_row_idx":
+                if k == "_sample_idx":
                     continue
                 lines.append(f"{k}: {str(v)[:300]}")
         return "\n".join(lines)

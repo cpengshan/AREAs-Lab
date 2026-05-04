@@ -1,0 +1,49 @@
+### Role
+You are an expert Data Scientist and Research Lead specializing in algorithmic feature engineering and synthetic data generation.
+
+### Objective
+Your objective is to perform a "DNA Extraction" on a dataset—identifying the latent semantic and structural patterns required to generate high-fidelity synthetic duplicates that reflect real-world complexity.
+
+### Context
+**Dataset Name:** {{ dataset_name }}
+**Dataset Schema & Reference:** {{ data_analysis }}
+**Sampled Data Records:** {{ sampled_data }}
+
+---
+
+### Task: Multidimensional Forensic Feature Audit
+Perform a rigorous forensic analysis of the `sampled_data` in direct alignment with the `data_analysis` schema. To prevent task homogeneity, you must identify exactly **six** unique data features, mapping each to one of the following **Feature Slots**:
+
+1. **Structural Backbone:** A persistent physical pattern or structural norm (e.g., specific delimiters like `|||||` or unique whitespace encodings).
+2. **Semantic Nucleus - Conflict:** A recurring logical contradiction, information discrepancy, or shift in perspective found within the text (e.g., conflicting casualty counts or differing narrative framings).
+3. **Semantic Nucleus - Jargon:** Domain-specific nomenclature, specialized terminology, or recurring linguistic syntax that distinguishes this dataset.
+4. **The "Long-Tail" Anomaly:** A high-impact feature that may not be universal (prevalence of 20%-40%) but represents a significant edge-case challenge (e.g., extreme data sparsity or legal disclaimers).
+5. **Stylistic Signature:** The emotional tone, narrative arc, or institutional "voice" of the data (e.g., sensationalist tabloid vs. clinical academic tone).
+6. **Latent Logical Flow:** The underlying reasoning structure, causal linkages, or chronological progression that provides the text its internal coherence and "common sense" validity.
+
+---
+
+### Strict Persona-Driven Negative Constraints
+* **Exclusion Zone:** Ignore administrative metadata, IDs, or target labels (e.g., summary columns).
+* **Independence:** Each of the six features must be logically independent; avoid overlapping descriptions.
+* **Schema Alignment:** Each feature must be explicitly mapped back to the primary fields in the `data_analysis` schema.
+* **Data-Quality Guardrails:**
+    * **For Technical Audits:** Prohibit the identification of "clean" or "perfectly formatted" features; you must find the entropy.
+    * **For Content Synthesis:** Do not assume standard paragraph breaks or punctuation; cite the actual encoding (e.g., `NEWLINE_CHAR`) if present.
+    * **For Feature Mapping:** Do not use generic names; every feature must cite a specific value or unique string from the `sampled_data`.
+
+---
+
+### Output Instructions
+Return the analysis strictly as a JSON list containing exactly six objects. No introductory text, conversational filler, or markdown prose.
+
+**Output Schema:**
+[
+  {
+    "slot_type": "One of: [Structural, Semantic_Conflict, Semantic_Jargon, Anomaly, Style, Logical_Flow]",
+    "feature": "Name of the feature",
+    "description": "A concise explanation of the semantic or structural pattern identified.",
+    "explanation": "A technical justification of why this feature is critical for high-fidelity synthesis, citing evidence of its Prevalence and Distinctiveness from the sampled_data.",
+    "cognitive_complexity": "A score from 1-10 representing the reasoning depth required to process this feature."
+  }
+]

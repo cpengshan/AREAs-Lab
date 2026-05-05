@@ -14,6 +14,7 @@ requirement and adaptively gathers evidence before synthesizing.
 
 import logging
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from typing import Annotated, Sequence, TypedDict
@@ -97,7 +98,7 @@ class HybridAgent:
         max_iterations: int = 6,
         temperature: float = 0.0,
         max_tokens: int = 4096,
-        question_max_tokens: int = 512,
+        question_max_tokens: int = 2048,
         router_max_tokens: int = 256,
     ):
         self.model_name = model_name
@@ -323,7 +324,11 @@ class HybridAgent:
         end = datetime.now(timezone.utc).isoformat()
 
         parsed = parse_json_output(result["output"])
-        question = parsed.get("question", result["output"])
+        question = parsed.get("question") or ""
+        if not question:
+            # Fallback: try to extract question value from raw text via regex
+            m = re.search(r'"question"\s*:\s*"((?:[^"\\]|\\.)*)"', result["output"], re.DOTALL)
+            question = m.group(1).replace('\\"', '"') if m else result["output"]
         ambiguity = parsed.get("identified_ambiguity", "")
         logger.info(f"[Hybrid] User turn {turn}: {question[:80]}")
 

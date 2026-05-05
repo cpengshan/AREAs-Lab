@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=aunu_data_interaction
-#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/data_interaction/output.log
+#SBATCH --job-name=hybrid_v2
+#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid_v2/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
 #SBATCH --mail-type=END,FAIL
@@ -10,20 +10,18 @@ REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_TURNS=10                                       # data-refinement rounds
-MAX_STEPS=15
-OUTPUT_DIR="${REPO_ROOT}/results/data_interaction"
+MAX_ITERATIONS=15                                   # total routing iterations (Phase 1 + Phase 2)
+MID_TURN=6                                          # turn at which mid-synthesis fires (end of Phase 1)
+MAX_STEPS=40
+OUTPUT_DIR="${REPO_ROOT}/agent/results/hybrid_v2"
 AGENT_MODEL="claude-haiku-4-5-20251001"
-AGENT_MODEL_TEMPERATURE=0.7
 
 # Datasets to run — format: "data_home_dir:dataset_name"
-# data_home_dir: folder containing the synthesized_output.json for that dataset
-# dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
@@ -38,13 +36,15 @@ DATASETS=(
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
-LOG_DIR="${REPO_ROOT}/agent/logs/data_interaction"
+LOG_DIR="${REPO_ROOT}/agent/logs/hybrid_v2"
 mkdir -p "$LOG_DIR"
+mkdir -p "$OUTPUT_DIR"
+
 if [ -n "$1" ]; then
   EXP_ID="$1"
   RESUME_FLAG="--exp_id $EXP_ID"
   LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-  echo "Resuming data_interaction Experiment${EXP_ID} (skipping already-done tasks)..."
+  echo "Resuming hybrid_v2 Experiment${EXP_ID} (skipping already-done tasks)..."
 else
   EXP_ID=1
   while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
@@ -52,7 +52,7 @@ else
   done
   RESUME_FLAG=""
   LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-  echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
+  echo "Running hybrid_v2 Experiment${EXP_ID} across all datasets..."
 fi
 
 for ENTRY in "${DATASETS[@]}"; do
@@ -83,15 +83,18 @@ PYEOF
 
   python3 "${REPO_ROOT}/agent/run_agent.py" \
     --config "$CONFIG" \
-    --strategy data_interaction \
+    --strategy hybrid_v2 \
     --dataset "$DATASET" \
     --persona $PERSONAS \
     --input_type "$INPUT_TYPE" \
-    --max_turns "$MAX_TURNS" \
+    --max_iterations "$MAX_ITERATIONS" \
+    --mid_turn "$MID_TURN" \
     --max_steps "$MAX_STEPS" \
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
+    --use_v2 \
+    --communication_habit neutral \
     $RESUME_FLAG
 
 done

@@ -20,18 +20,22 @@ SPLIT="defining_instances"                         # defining_instances | non_de
 # data_home_dir: folder containing the synthesized_output.json for that dataset
 # dataset_name:  HuggingFace dataset id passed to run_agent.py
 DATASETS=(
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/kritsadaK/EDGAR-CORPUS-Financial-Summarization:kritsadaK/EDGAR-CORPUS-Financial-Summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/rohitsaxena/MovieSum:rohitsaxena/MovieSum"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
     # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/zero_shot_with_data_analysis_and_samples"
@@ -57,7 +61,7 @@ for ENTRY in "${DATASETS[@]}"; do
 
   PERSONAS=$(python3 - <<PYEOF
 import json, sys
-path = "${DATA_DIR}/synthesized_output_2.3.json"
+path = "${DATA_DIR}/synthesized_output_2.6.json"
 try:
     with open(path) as f:
         d = json.load(f)

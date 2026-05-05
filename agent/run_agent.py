@@ -51,6 +51,15 @@ from AUNUEnv.aunu_env.dataset.loader import load_dataset
 from AUNUEnv.aunu_env.env.aunu_env import AUNUEnv
 from AUNUEnv.aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
 from AUNUEnv.aunu_env.evaluator.metrics import aggregate_results
+
+
+class _NoOpEvaluator:
+    """Drop-in replacement for AtomicEvaluator that skips all LLM calls."""
+
+    def evaluate(self, predicted: str, gold: str, task_id=None) -> dict:
+        return {"gold_units": [], "predicted_units": [], "comparison": {},
+                "counts": {}, "scores": {}, "gold_categories": {},
+                "pred_categories": {}, "subcategory_scores": {}, "cost": 0.0}
 from AUNUEnv.aunu_env.users.mimic_user import MimicUser
 from AUNUEnv.aunu_env.users.mimic_user_v2 import MimicUserV2
 
@@ -62,6 +71,7 @@ from data_interaction_v3_agent import DataInteractionV3Agent
 from data_interaction_v4_agent import DataInteractionV4Agent
 from data_interaction_v5_agent import DataInteractionV5Agent
 from hybrid_agent import HybridAgent
+from hybrid_agent_v2 import HybridV2Agent
 from zero_shot_variants_agent import (
     ZeroShotWithDataAnalysisAgent,
     ZeroShotWithSamplesAgent,
@@ -96,7 +106,7 @@ def parse_args():
             "zero_shot", "zero_shot_with_data_analysis", "zero_shot_with_samples",
             "zero_shot_with_samples_reason",
             "zero_shot_with_data_analysis_and_samples", "zero_shot_with_data_summary",
-            "user_interaction", "data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5", "hybrid",
+            "user_interaction", "data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5", "hybrid", "hybrid_v2",
         ],
         default="zero_shot",
         help="Agent strategy (default: zero_shot)",
@@ -126,6 +136,8 @@ def parse_args():
                         help="Max clarification turns (user_interaction only; overrides config)")
     parser.add_argument("--max_iterations", type=int, default=None,
                         help="Max routing iterations for hybrid strategy (overrides config)")
+    parser.add_argument("--mid_turn", type=int, default=6,
+                        help="Turn at which hybrid_v2 fires mid-synthesis and enters Phase 2 (default: 6)")
     parser.add_argument("--max_steps", type=int, default=None,
                         help="Max env steps per episode (overrides config)")
     parser.add_argument(
@@ -147,6 +159,10 @@ def parse_args():
         help="Which subset of data_sampled_2.1.json to sample from (default: all)",
     )
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--no_eval", action="store_true",
+        help="Skip evaluation at the end of each episode; only save output.json",
+    )
     parser.add_argument(
         "--use_v2", action="store_true",
         help="Use MimicUserV2 (feedback_mimic_user_v3.jinja + responser_habit.json)",
@@ -333,6 +349,14 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         result["format_reflection_history"] = log.get("format_reflection_history", [])
         result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
         result["zero_shot_draft"] = log.get("zero_shot_draft", "")
+    if args.strategy == "hybrid_v2":
+        result["router_history"] = log.get("router_history", [])
+        result["user_interactions"] = log.get("user_interactions", [])
+        result["user_interactions_phase2"] = log.get("user_interactions_phase2", [])
+        result["data_interactions"] = log.get("data_interactions", [])
+        result["mid_synthesis"] = log.get("mid_synthesis", "")
+        result["format_reflection_history"] = log.get("format_reflection_history", [])
+        result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
     if args.strategy == "zero_shot_with_samples_reason" and log.get("modifications") is not None:
         result["modifications"] = log["modifications"]
     return result
@@ -401,15 +425,18 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
     max_turns = args.max_turns if args.max_turns is not None else 5
     max_iterations = args.max_iterations if args.max_iterations is not None else 6
 
-    _gt_cache_path = None
-    if cfg.dataset_path:
-        _gt_cache_path = os.path.join(os.path.dirname(cfg.dataset_path), "ground_truth_decompose.json")
-    evaluator = AtomicEvaluator(
-        model_name=cfg.evaluator_model,
-        temperature=cfg.effective_evaluator_temperature,
-        cache_gold_units=True,
-        cache_path=_gt_cache_path,
-    )
+    if getattr(args, "no_eval", False):
+        evaluator = _NoOpEvaluator()
+    else:
+        _gt_cache_path = None
+        if cfg.dataset_path:
+            _gt_cache_path = os.path.join(os.path.dirname(cfg.dataset_path), "ground_truth_decompose.json")
+        evaluator = AtomicEvaluator(
+            model_name=cfg.evaluator_model,
+            temperature=cfg.effective_evaluator_temperature,
+            cache_gold_units=True,
+            cache_path=_gt_cache_path,
+        )
     env = AUNUEnv(evaluator=evaluator, max_steps=cfg.max_steps)
 
     persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
@@ -418,7 +445,10 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         synthesized_path=cfg.dataset_path,
         dataset_name=cfg.dataset_name,
     )
-    tasks = [t for t in all_tasks if t.persona_id in args.persona]
+    tasks = sorted(
+        [t for t in all_tasks if t.persona_id in args.persona],
+        key=lambda t: (t.persona_id, int(t.task_id.rsplit("_", 1)[-1])),
+    )
     if not tasks:
         raise ValueError(f"No tasks found for personas {args.persona} in {cfg.dataset_path}")
     logger.info(f"Running {len(tasks)} tasks for personas {args.persona}")
@@ -545,6 +575,11 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 log = agent.run(env, task)
             elif args.strategy == "hybrid":
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
+                seed_req = seed_requirements.get((task.persona_id, task_num))
+                log = agent.run(env, task, user, initial_requirement=seed_req)
+            elif args.strategy == "hybrid_v2":
+                mid_turn = getattr(args, "mid_turn", 6)
+                agent = HybridV2Agent.from_config(cfg, max_iterations=max_iterations, mid_turn=mid_turn)
                 seed_req = seed_requirements.get((task.persona_id, task_num))
                 log = agent.run(env, task, user, initial_requirement=seed_req)
             else:

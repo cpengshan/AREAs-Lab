@@ -10,20 +10,29 @@ type LoadedRun = {
 };
 
 const DEFAULT_DATASETS = [
-    "HuggingFaceFW_fineweb-edu",
     "alexfabbri_multi_news",
+    "santoshtyss_uk_legislation",
+    "starmpcc_Asclepius-Synthetic-Clinical-Notes",
+    "thu-coai_esconv",
     "ccdv_arxiv-summarization",
     "ccdv_govreport-summarization",
     "ccdv_mediasum",
     "ccdv_patent-classification",
     "ccdv_pubmed-summarization",
+    "mrSoul7766_ECTSum",
+    "HuggingFaceFW_fineweb-edu",
+    "HuggingFaceH4_MATH-500",
+    "danidanou_Reuters_Financial_News",
+    "Pavithree_eli5",
+    "FiscalNote_billsum",
+    "Harley-ml_lesswrong",
+    "jlohding_sp500-edgar-10k",
     "kritsadaK_EDGAR-CORPUS-Financial-Summarization",
+    "macadeliccc_US-SupremeCourtVerdicts",
     "rohitsaxena_MovieSum",
-    "santoshtyss_uk_legislation",
-    "starmpcc_Asclepius-Synthetic-Clinical-Notes",
-    "thu-coai_esconv"
+    "v1ctor10_section1_annual_reports",
 ];
-const DEFAULT_STRATEGIES = ["zero_shot", "zero_shot_with_samples", "zero_shot_with_samples_reason", "zero_shot_with_data_analysis", "zero_shot_with_data_analysis_and_samples", "zero_shot_with_data_summary", "persona", "user_interaction", "data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5", "hybrid"];
+const DEFAULT_STRATEGIES = ["zero_shot", "zero_shot_with_samples_reason", "user_interaction", "hybrid"];
 const DEFAULT_EXPERIMENTS = Array.from({ length: 30 }, (_, i) => `Experiment${i + 1}`);
 const METRIC_KEYS = [
   "precision",
@@ -229,67 +238,6 @@ function getRunAverageSubcategoryScores(run: LoadedRun) {
   return result;
 }
 
-function getDataInteractionV5TurnScores(runs: LoadedRun[]) {
-  // For data_interaction_v5, eval_results.json top-level keys ARE the turn numbers ("1".."N").
-  // Each turn key contains task keys whose scores we average.
-  const v5Runs = runs.filter((r) => r.strategy === "data_interaction_v5");
-  if (v5Runs.length === 0) return null;
-
-  const result: Array<{
-    experimentId: string;
-    turns: Array<{
-      turn: number;
-      overall: Record<MetricKey, number | null>;
-      user_specified: Record<MetricKey, number | null>;
-      data_specified: Record<MetricKey, number | null>;
-      n_pred: { user_specified: number; data_specified: number };
-      ratio: { user_specified: number | null; data_specified: number | null };
-    }>;
-  }> = [];
-
-  for (const run of v5Runs) {
-    const evalJson = run.evalJson || {};
-    const turnKeys = Object.keys(evalJson).filter((k) => k !== "args" && !Number.isNaN(Number(k)));
-
-    const turns = turnKeys.map(Number).sort((a, b) => a - b).map((t) => {
-      const turnBlock = evalJson[String(t)] || {};
-      const overall: Record<MetricKey, number[]> = { precision: [], recall: [], f1: [] };
-      const user_specified: Record<MetricKey, number[]> = { precision: [], recall: [], f1: [] };
-      const data_specified: Record<MetricKey, number[]> = { precision: [], recall: [], f1: [] };
-      let totalUs = 0, totalDs = 0;
-
-      for (const taskKey of Object.keys(turnBlock)) {
-        const task = turnBlock[taskKey];
-        for (const k of METRIC_KEYS) {
-          const v = task?.scores?.[k];
-          if (v !== undefined && v !== null && !Number.isNaN(Number(v))) overall[k].push(Number(v));
-          const us = task?.subcategory_scores?.user_specified?.[k];
-          if (us !== undefined && us !== null && !Number.isNaN(Number(us))) user_specified[k].push(Number(us));
-          const ds = task?.subcategory_scores?.data_specified?.[k];
-          if (ds !== undefined && ds !== null && !Number.isNaN(Number(ds))) data_specified[k].push(Number(ds));
-        }
-        const nUs = task?.subcategory_scores?.user_specified?.n_pred;
-        const nDs = task?.subcategory_scores?.data_specified?.n_pred;
-        if (nUs !== undefined && nUs !== null) totalUs += Number(nUs);
-        if (nDs !== undefined && nDs !== null) totalDs += Number(nDs);
-      }
-
-      const totalPred = totalUs + totalDs;
-      return {
-        turn: t,
-        overall: { precision: avg(overall.precision), recall: avg(overall.recall), f1: avg(overall.f1) } as Record<MetricKey, number | null>,
-        user_specified: { precision: avg(user_specified.precision), recall: avg(user_specified.recall), f1: avg(user_specified.f1) } as Record<MetricKey, number | null>,
-        data_specified: { precision: avg(data_specified.precision), recall: avg(data_specified.recall), f1: avg(data_specified.f1) } as Record<MetricKey, number | null>,
-        n_pred: { user_specified: totalUs, data_specified: totalDs },
-        ratio: { user_specified: totalPred ? totalUs / totalPred : null, data_specified: totalPred ? totalDs / totalPred : null },
-      };
-    });
-
-    result.push({ experimentId: run.experimentId, turns });
-  }
-
-  return result;
-}
 
 function panelStyle(): React.CSSProperties {
   return {
@@ -1456,7 +1404,13 @@ function HybridIterationTrace({ taskData }: { taskData: any }) {
               {askMsg && (
                 <div>
                   <div style={labelStyle("#1d4ed8")}>③ Message sent to user</div>
-                  <TextBlock text={askMsg.output} bg="#eff6ff" border="#bfdbfe" />
+                  <TextBlock text={(() => {
+                    try {
+                      const cleaned = askMsg.output.trim().replace(/^```json\n?/, "").replace(/\n?```$/, "").replace(/\\n/g, "\n");
+                      const p = JSON.parse(cleaned);
+                      return p.question || askMsg.output;
+                    } catch { return askMsg.output; }
+                  })()} bg="#eff6ff" border="#bfdbfe" />
                 </div>
               )}
               {mimicMsg && (
@@ -1955,34 +1909,14 @@ export default function App() {
   const [dataset, setDataset] = useState(DEFAULT_DATASETS[0]);
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
     "zero_shot",
-    "zero_shot_with_samples",
     "zero_shot_with_samples_reason",
-    "zero_shot_with_data_analysis",
-    "zero_shot_with_data_analysis_and_samples",
-    "zero_shot_with_data_summary",
-    "persona",
     "user_interaction",
-    "data_interaction",
-    "data_interaction_v2",
-    "data_interaction_v3",
-    "data_interaction_v4",
-    "data_interaction_v5",
     "hybrid",
   ]);
   const [strategyExperimentIds, setStrategyExperimentIds] = useState<Record<string, string>>({
     zero_shot: DEFAULT_EXPERIMENTS[0],
-    zero_shot_with_samples: DEFAULT_EXPERIMENTS[0],
     zero_shot_with_samples_reason: DEFAULT_EXPERIMENTS[0],
-    zero_shot_with_data_analysis: DEFAULT_EXPERIMENTS[0],
-    zero_shot_with_data_analysis_and_samples: DEFAULT_EXPERIMENTS[0],
-    zero_shot_with_data_summary: DEFAULT_EXPERIMENTS[0],
-    persona: DEFAULT_EXPERIMENTS[0],
     user_interaction: DEFAULT_EXPERIMENTS[0],
-    data_interaction: DEFAULT_EXPERIMENTS[0],
-    data_interaction_v2: DEFAULT_EXPERIMENTS[0],
-    data_interaction_v3: DEFAULT_EXPERIMENTS[0],
-    data_interaction_v4: DEFAULT_EXPERIMENTS[0],
-    data_interaction_v5: DEFAULT_EXPERIMENTS[0],
     hybrid: DEFAULT_EXPERIMENTS[0],
   });
   const [runs, setRuns] = useState<LoadedRun[]>([]);
@@ -2306,63 +2240,6 @@ export default function App() {
           )}
         </div>
 
-        {(() => {
-          const v5Data = getDataInteractionV5TurnScores(runs);
-          if (!v5Data || v5Data.length === 0) return null;
-          return (
-            <div style={panelStyle()}>
-              <h2 style={sectionTitleStyle()}>data_interaction_v5 — scores per turn</h2>
-              {v5Data.map(({ experimentId, turns }) => (
-                <div key={experimentId} style={{ marginBottom: 20 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: "#374151" }}>{experimentId}</div>
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
-                      <thead>
-                        <tr style={{ background: "#f6f8fa" }}>
-                          <th style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #ddd" }} rowSpan={2}>Turn</th>
-                          <th style={{ textAlign: "center", padding: "6px 10px", borderBottom: "1px solid #ddd", borderLeft: "2px solid #d1d5db", background: "#f6f8fa", color: "#374151" }} colSpan={3}>Overall</th>
-                          <th style={{ textAlign: "center", padding: "6px 10px", borderBottom: "1px solid #ddd", borderLeft: "2px solid #c7d2fe", background: "#eef2ff", color: "#3730a3" }} colSpan={5}>user_specified</th>
-                          <th style={{ textAlign: "center", padding: "6px 10px", borderBottom: "1px solid #ddd", borderLeft: "2px solid #bbf7d0", background: "#f0fdf4", color: "#166534" }} colSpan={5}>data_specified</th>
-                        </tr>
-                        <tr style={{ background: "#f6f8fa" }}>
-                          {(["Precision", "Recall", "F1"] as const).map((m) => (
-                            <th key={`ov-${m}`} style={{ textAlign: "left", padding: "5px 10px", borderBottom: "1px solid #ddd", borderLeft: m === "Precision" ? "2px solid #d1d5db" : undefined, fontSize: 12, color: "#555" }}>{m}</th>
-                          ))}
-                          {(["n_pred", "Ratio", "Precision", "Recall", "F1"] as const).map((m) => (
-                            <th key={`us-${m}`} style={{ textAlign: "left", padding: "5px 10px", borderBottom: "1px solid #ddd", borderLeft: m === "n_pred" ? "2px solid #c7d2fe" : undefined, fontSize: 12, color: "#555" }}>{m}</th>
-                          ))}
-                          {(["n_pred", "Ratio", "Precision", "Recall", "F1"] as const).map((m) => (
-                            <th key={`ds-${m}`} style={{ textAlign: "left", padding: "5px 10px", borderBottom: "1px solid #ddd", borderLeft: m === "n_pred" ? "2px solid #bbf7d0" : undefined, fontSize: 12, color: "#555" }}>{m}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {turns.map(({ turn, overall, user_specified, data_specified, n_pred, ratio }) => (
-                          <tr key={turn}>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", fontWeight: 700 }}>Turn {turn}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", borderLeft: "2px solid #d1d5db" }}>{formatScore(overall.precision)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee" }}>{formatScore(overall.recall)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", fontWeight: 600 }}>{formatScore(overall.f1)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", borderLeft: "2px solid #c7d2fe", background: "#f5f7ff", fontSize: 13 }}>{n_pred.user_specified}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f5f7ff", fontSize: 13 }}>{ratio.user_specified !== null ? `${(ratio.user_specified * 100).toFixed(1)}%` : "—"}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f5f7ff" }}>{formatScore(user_specified.precision)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f5f7ff" }}>{formatScore(user_specified.recall)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f5f7ff", fontWeight: 600 }}>{formatScore(user_specified.f1)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", borderLeft: "2px solid #bbf7d0", background: "#f0fdf4", fontSize: 13 }}>{n_pred.data_specified}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f0fdf4", fontSize: 13 }}>{ratio.data_specified !== null ? `${(ratio.data_specified * 100).toFixed(1)}%` : "—"}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f0fdf4" }}>{formatScore(data_specified.precision)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f0fdf4" }}>{formatScore(data_specified.recall)}</td>
-                            <td style={{ padding: "8px 10px", borderBottom: "1px solid #eee", background: "#f0fdf4", fontWeight: 600 }}>{formatScore(data_specified.f1)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
 
         <div style={panelStyle()}>
           <h2 style={sectionTitleStyle()}>Global selection</h2>

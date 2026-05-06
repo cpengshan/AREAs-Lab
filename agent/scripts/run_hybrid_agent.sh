@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=hybrid
+#SBATCH --job-name=second_gpt
 #SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
@@ -13,7 +13,7 @@ INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | de
 MAX_ITERATIONS=20                                   # max routing iterations per episode
 MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
-AGENT_MODEL="claude-haiku-4-5-20251001"
+AGENT_MODEL="gpt-5.4"
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 DATASETS=(
@@ -30,9 +30,9 @@ DATASETS=(
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/hybrid"

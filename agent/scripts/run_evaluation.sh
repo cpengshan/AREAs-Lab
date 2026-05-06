@@ -10,7 +10,7 @@ REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 EVALUATOR_MODEL="gpt-5.4"
 WORKERS=10
-STRATEGY="zero_shot"          # zero_shot | zero_shot_with_samples_reason | user_interaction ｜ hybrid
+STRATEGY="zero_shot_with_samples_reason"          # zero_shot | zero_shot_with_samples_reason | user_interaction ｜ hybrid
 
 # Datasets to evaluate — must match the slugs under agent/results/
 # Format: "dataset_name" (the HuggingFace id; slashes become underscores in the results dir)

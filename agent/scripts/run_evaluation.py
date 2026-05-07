@@ -51,6 +51,8 @@ def parse_args():
     parser.add_argument("--cache_path", type=str, default=None,
                         help="Path to gold unit cache JSON (default: ground_truth_decompose.json "
                              "next to the synthesized dataset)")
+    parser.add_argument("--reasoning_effort", type=str, default=None,
+                        help="Reasoning effort for the evaluator model (low | medium | high)")
     parser.add_argument("--workers", type=int, default=10,
                         help="Max parallel evaluation threads (default: 10, one per task)")
     parser.add_argument("--resume", action="store_true",
@@ -147,10 +149,15 @@ def _evaluate_task(task: dict, evaluator: AtomicEvaluator) -> tuple[dict, dict]:
         f"P={scores.get('precision', 0):.3f}  "
         f"R={scores.get('recall', 0):.3f}"
     )
+    sub = eval_result.get("subcategory_scores") or {}
+    us = sub.get("user_specified", {})
+    ds = sub.get("data_specified", {})
     print(
         f"[{label}] F1={scores.get('f1', 0):.3f}  "
         f"P={scores.get('precision', 0):.3f}  "
-        f"R={scores.get('recall', 0):.3f}"
+        f"R={scores.get('recall', 0):.3f}  |  "
+        f"User-spec F1={us.get('f1', 0):.3f} P={us.get('precision', 0):.3f} R={us.get('recall', 0):.3f}  |  "
+        f"Data-spec F1={ds.get('f1', 0):.3f} P={ds.get('precision', 0):.3f} R={ds.get('recall', 0):.3f}"
     )
     return task, _format_eval_result(eval_result), eval_result.get("cost", 0.0)
 
@@ -162,6 +169,39 @@ def main():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    exp_dir = os.path.dirname(os.path.abspath(args.input_path))
+    output_path = args.output_path or os.path.join(exp_dir, "eval_results.json")
+
+    if os.path.exists(output_path) and not args.resume:
+        with open(output_path) as f:
+            eval_output = json.load(f)
+        all_formatted = []
+        for pk, pv in eval_output.items():
+            if pk in ("args", "aggregate_scores") or not isinstance(pv, dict):
+                continue
+            for hk, hv in pv.items():
+                if not isinstance(hv, dict):
+                    continue
+                if hv.get("scores"):
+                    all_formatted.append(hv)
+                else:
+                    for tk, tv in hv.items():
+                        if isinstance(tv, dict) and tv.get("scores"):
+                            all_formatted.append(tv)
+        us_vals = [(f.get("subcategory_scores") or {}).get("user_specified", {}) or {} for f in all_formatted]
+        ds_vals = [(f.get("subcategory_scores") or {}).get("data_specified", {}) or {} for f in all_formatted]
+        def _avg(lst, key): return sum(x.get(key, 0) for x in lst) / len(lst) if lst else 0
+        def _avg(lst, key): return sum(x.get(key, 0) for x in lst) / len(lst) if lst else 0
+        agg = eval_output.get("aggregate_scores", {})
+        print(f"\n=== Evaluation Summary (from existing eval_results.json) ===")
+        print(f"Tasks evaluated: {len(all_formatted)}")
+        for metric in ("f1", "precision", "recall", "alignment", "constraint_preservation"):
+            if metric in agg:
+                print(f"  {metric}: {agg[metric]:.4f}")
+        print(f"User-specified   F1={_avg(us_vals, 'f1'):.4f}  P={_avg(us_vals, 'precision'):.4f}  R={_avg(us_vals, 'recall'):.4f}")
+        print(f"Data-specified   F1={_avg(ds_vals, 'f1'):.4f}  P={_avg(ds_vals, 'precision'):.4f}  R={_avg(ds_vals, 'recall'):.4f}")
+        return
+
     with open(args.input_path) as f:
         data = json.load(f)
 
@@ -172,16 +212,13 @@ def main():
             "evaluator_model not found in output.json args; pass --evaluator_model"
         )
 
-    exp_dir = os.path.dirname(os.path.abspath(args.input_path))
-    output_path = args.output_path or os.path.join(exp_dir, "eval_results.json")
-
     cache_path = args.cache_path
     if cache_path is None:
         dataset_name = run_args.get("dataset", "")
         if dataset_name:
+            slug = dataset_name.replace("/", "_")
             cache_path = os.path.join(
-                _REPO_ROOT, "AUNUEnv", "data", "data_synthesized",
-                dataset_name, "ground_truth_decompose.json",
+                _REPO_ROOT, "AUNUEnv", "aunu_env", "evaluator", "cache", f"{slug}.json"
             )
 
     # Single shared evaluator — AtomicEvaluator is thread-safe for the LLM
@@ -190,6 +227,7 @@ def main():
         model_name=evaluator_model,
         cache_gold_units=True,
         cache_path=cache_path,
+        reasoning_effort=args.reasoning_effort,
     )
 
     eval_output: dict = {}
@@ -243,22 +281,35 @@ def main():
                 with open(output_path, "w") as f:
                     json.dump(eval_output, f, indent=2, default=str)
 
-    # Collect already-skipped results from existing eval_output into agg
+    # Collect all results from eval_output (including already-skipped ones)
+    all_formatted = []
     for pk, pv in eval_output.items():
         if pk in ("args", "aggregate_scores") or not isinstance(pv, dict):
             continue
-        for tk, tv in pv.items():
-            if isinstance(tv, dict) and tv.get("scores"):
-                if tv not in all_formatted:
-                    all_formatted.append(tv)
+        for hk, hv in pv.items():
+            if not isinstance(hv, dict):
+                continue
+            if hv.get("scores"):
+                all_formatted.append(hv)
+            else:
+                for tk, tv in hv.items():
+                    if isinstance(tv, dict) and tv.get("scores"):
+                        all_formatted.append(tv)
 
     agg = aggregate_results(all_formatted)
+
+    us_vals = [(f.get("subcategory_scores") or {}).get("user_specified", {}) or {} for f in all_formatted]
+    ds_vals = [(f.get("subcategory_scores") or {}).get("data_specified", {}) or {} for f in all_formatted]
+    def _avg(lst, key): return sum(x.get(key, 0) for x in lst) / len(lst) if lst else 0
+
     print(f"\n=== Evaluation Summary ===")
     print(f"Tasks evaluated: {agg.get('n_tasks', 0)}")
     print(f"Total eval cost: ${total_cost:.6f}")
     for metric in ("f1", "precision", "recall", "alignment", "constraint_preservation"):
         if metric in agg:
             print(f"  {metric}: {agg[metric]:.4f}")
+    print(f"User-specified   F1={_avg(us_vals, 'f1'):.4f}  P={_avg(us_vals, 'precision'):.4f}  R={_avg(us_vals, 'recall'):.4f}")
+    print(f"Data-specified   F1={_avg(ds_vals, 'f1'):.4f}  P={_avg(ds_vals, 'precision'):.4f}  R={_avg(ds_vals, 'recall'):.4f}")
 
     eval_output["aggregate_scores"] = agg
     with open(output_path, "w") as f:

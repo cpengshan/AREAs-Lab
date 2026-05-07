@@ -67,29 +67,43 @@ def _openai_generate(model_name: str, prompt: str, **kwargs) -> dict:
     from openai import OpenAI
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+    reasoning_effort = kwargs.pop("reasoning_effort", None)
+
+    # Reasoning models use the Responses API (client.responses.create) with
+    # input= and reasoning=, not the Chat Completions API.
+    if model_name in _REASONING_MODELS:
+        kwargs.pop("max_tokens", None)
+        kwargs.pop("max_completion_tokens", None)
+        kwargs.pop("temperature", None)
+        response = client.responses.create(
+            model=model_name,
+            reasoning={"effort": reasoning_effort or "low"},
+            input=[{"role": "user", "content": prompt}],
+            **kwargs,
+        )
+        usage = response.usage
+        try:
+            prices = PRICING_DATA["OpenAI"][model_name]
+            cost = (usage.input_tokens / 1e6 * prices["input"]) + \
+                   (usage.output_tokens / 1e6 * prices["output"])
+        except KeyError:
+            logger.warning(f"No pricing data for OpenAI model '{model_name}', cost set to 0.0")
+            cost = 0.0
+        return {
+            "output": response.output_text,
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "cost": cost,
+        }
+
     if model_name in _MAX_COMPLETION_TOKENS_MODELS and "max_tokens" in kwargs:
         kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
 
-    # if model_name in _REASONING_MODELS and "reasoning" not in kwargs:
-    #     kwargs["reasoning"] = {"effort": "minimal"}
-
-    try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}],
-            **kwargs,
-        )
-    except TypeError as e:
-        if "reasoning" in str(e) and "reasoning" in kwargs:
-            logger.warning(f"SDK does not support 'reasoning' param for '{model_name}'; retrying without it.")
-            kwargs.pop("reasoning")
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": prompt}],
-                **kwargs,
-            )
-        else:
-            raise
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        **kwargs,
+    )
     usage = response.usage
     try:
         prices = PRICING_DATA["OpenAI"][model_name]
@@ -210,6 +224,7 @@ def call_llm(
     prompt: str,
     max_tokens: int = 4096,
     temperature: float = 0.0,
+    reasoning_effort: str | None = None,
     retries: int = 3,
     retry_delay: float = 2.0,
 ) -> dict:
@@ -223,6 +238,9 @@ def call_llm(
         prompt: The full prompt string.
         max_tokens: Maximum output tokens.
         temperature: Sampling temperature.
+        reasoning_effort: Reasoning effort for supported OpenAI models
+            (e.g. "low", "medium", "high"). Defaults to "low" for GPT-5.4
+            models when omitted.
         retries: Number of retry attempts on transient failures.
         retry_delay: Seconds between retries.
 
@@ -242,7 +260,13 @@ def call_llm(
 
     for attempt in range(retries):
         try:
-            result = generate(model_name, prompt, max_tokens=max_tokens, temperature=temperature)
+            result = generate(
+                model_name,
+                prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                reasoning_effort=reasoning_effort,
+            )
             return result
         except Exception as e:
             last_error = e

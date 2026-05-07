@@ -30,17 +30,17 @@ _DECOMPOSE_TEMPLATE = os.path.join(_EVAL_PROMPT_DIR, "LLM_judge_decompose.jinja"
 _COMPARE_TEMPLATE = os.path.join(_EVAL_PROMPT_DIR, "LLM_judge_compare.jinja")
 _CLASSIFY_TEMPLATE = os.path.join(_EVAL_PROMPT_DIR, "LLM_judge_classify.jinja")
 
-_DEFAULT_CACHE_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "gold_cache.json")
-)
+_CACHE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "cache"))
+_DEFAULT_CACHE_PATH = os.path.join(_CACHE_DIR, "gold_cache.json")
 
 
 def _load_persistent_cache(path: str) -> dict:
     """Load cache from *path*.
 
-    Supports two on-disk formats:
-    - New format: {task_id: [{unit, category}, ...]}
-    - Legacy format: {task_id: {units: [...], categories: {...}}}
+    Supports three on-disk formats:
+    - Current format: {task_id: {overall: [...], user_specified: [...], data_specified: [...]}}
+    - Legacy format 1: {task_id: [{unit, category}, ...]}
+    - Legacy format 2: {task_id: {units: [...], categories: {...}}}
 
     Always returns the internal representation: {task_id: {units, categories}}.
     """
@@ -55,27 +55,40 @@ def _load_persistent_cache(path: str) -> dict:
 
     result = {}
     for task_id, value in raw.items():
-        if isinstance(value, list):
-            # New format: [{unit, category}, ...]
+        if isinstance(value, dict) and "overall" in value:
+            # Current format: {overall: [...], user_specified: [...], data_specified: [...]}
+            units = value.get("overall", [])
+            user_spec = value.get("user_specified", [])
+            data_spec = value.get("data_specified", [])
+            categories = {u: "user_specified" for u in user_spec}
+            categories.update({u: "data_specified" for u in data_spec})
+            result[task_id] = {"units": units, "categories": categories}
+        elif isinstance(value, list):
+            # Legacy format 1: [{unit, category}, ...]
             units = [item["unit"] for item in value if "unit" in item]
             categories = {item["unit"]: item["category"] for item in value if "unit" in item and "category" in item}
             result[task_id] = {"units": units, "categories": categories}
         else:
-            # Legacy format: {units: [...], categories: {...}}
+            # Legacy format 2: {units: [...], categories: {...}}
             result[task_id] = value
     return result
 
 
 def _save_persistent_cache(cache: dict, path: str) -> None:
-    """Save cache to *path* using the new list-of-{unit,category} format."""
+    """Save cache to *path* using the current format:
+    {task_id: {overall: [...], user_specified: [...], data_specified: [...]}}
+    """
     serializable = {}
     for task_id, entry in cache.items():
         units = entry.get("units", [])
         categories = entry.get("categories", {})
-        serializable[task_id] = [
-            {"unit": u, "category": categories.get(u, "unknown")}
-            for u in units
-        ]
+        user_specified = [u for u in units if categories.get(u) == "user_specified"]
+        data_specified = [u for u in units if categories.get(u) == "data_specified"]
+        serializable[task_id] = {
+            "overall": units,
+            "user_specified": user_specified,
+            "data_specified": data_specified,
+        }
     try:
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         with open(path, "w") as f:
@@ -105,10 +118,12 @@ class AtomicEvaluator:
         max_tokens: int = 16384,
         cache_gold_units: bool = True,
         cache_path: Optional[str] = None,
+        reasoning_effort: Optional[str] = None,
     ):
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.reasoning_effort = reasoning_effort
         self._cache_gold = cache_gold_units
         self._cache_path = cache_path or _DEFAULT_CACHE_PATH
         # In-memory cache: task_id → {units, categories}
@@ -201,6 +216,7 @@ class AtomicEvaluator:
             self.model_name, prompt,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
+            reasoning_effort=self.reasoning_effort,
         )
         parsed = parse_json_output(result["output"])
         units = parsed.get("atomic_units", [])
@@ -218,16 +234,27 @@ class AtomicEvaluator:
             return {}, 0.0
         prompt = render_template(
             _CLASSIFY_TEMPLATE,
-            atomic_units="\n".join(f"- {u}" for u in units),
+            atomic_units="\n".join(f"[{i}] {u}" for i, u in enumerate(units)),
         )
         result = call_llm(
             self.model_name, prompt,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
+            reasoning_effort=self.reasoning_effort,
         )
         parsed = parse_json_output(result["output"])
-        classifications = parsed.get("classifications", [])
-        categories = {c["unit"]: c["category"] for c in classifications if "unit" in c and "category" in c}
+        # Output is {data_specified: [ids...], user_specified: [ids...]}
+        categories: dict[str, str] = {}
+        for idx in parsed.get("data_specified", []):
+            if isinstance(idx, int) and 0 <= idx < len(units):
+                categories[units[idx]] = "data_specified"
+        for idx in parsed.get("user_specified", []):
+            if isinstance(idx, int) and 0 <= idx < len(units):
+                categories[units[idx]] = "user_specified"
+        # Fall back any unclassified units to user_specified
+        for u in units:
+            if u not in categories:
+                categories[u] = "user_specified"
         return categories, result.get("cost", 0.0)
 
     def _compare(
@@ -235,13 +262,48 @@ class AtomicEvaluator:
     ) -> tuple[dict, float]:
         prompt = render_template(
             _COMPARE_TEMPLATE,
-            ground_truth_units="\n".join(f"- {u}" for u in gold_units),
-            predicted_units="\n".join(f"- {u}" for u in pred_units),
+            ground_truth_units="\n".join(f"[{i}] {u}" for i, u in enumerate(gold_units)),
+            predicted_units="\n".join(f"[{i}] {u}" for i, u in enumerate(pred_units)),
         )
         result = call_llm(
             self.model_name, prompt,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
+            reasoning_effort=self.reasoning_effort,
         )
         parsed = parse_json_output(result["output"])
-        return parsed, result.get("cost", 0.0)
+
+        def g(idx): return gold_units[idx] if isinstance(idx, int) and 0 <= idx < len(gold_units) else None
+        def p(idx): return pred_units[idx] if isinstance(idx, int) and 0 <= idx < len(pred_units) else None
+
+        matched_pairs = []
+        for pair in parsed.get("matched_pairs", []):
+            gt_str = g(pair.get("ground_truth"))
+            pred_strs = [s for s in (p(i) for i in pair.get("predicted", [])) if s]
+            if gt_str:
+                matched_pairs.append({"ground_truth": gt_str, "predicted": pred_strs})
+
+        missing_units = [s for s in (g(i) for i in parsed.get("missing_units", [])) if s]
+        hallucinated_units = [s for s in (p(i) for i in parsed.get("hallucinated_units", [])) if s]
+
+        misaligned_units = []
+        for m in parsed.get("misaligned_units", []):
+            pred_str = p(m.get("predicted"))
+            gt_str = g(m.get("ground_truth"))
+            if pred_str and gt_str:
+                misaligned_units.append({"predicted": pred_str, "ground_truth": gt_str})
+
+        critical_units = [s for s in (g(i) for i in parsed.get("critical_units", [])) if s]
+        critical_missing = [s for s in (g(i) for i in parsed.get("critical_missing", [])) if s]
+
+        comparison = {
+            "ground_truth_units": gold_units,
+            "predicted_units": pred_units,
+            "matched_pairs": matched_pairs,
+            "missing_units": missing_units,
+            "hallucinated_units": hallucinated_units,
+            "misaligned_units": misaligned_units,
+            "critical_units": critical_units,
+            "critical_missing": critical_missing,
+        }
+        return comparison, result.get("cost", 0.0)

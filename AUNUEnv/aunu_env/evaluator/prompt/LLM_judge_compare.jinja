@@ -6,24 +6,26 @@ Your task is to compare two sets of atomic task requirement units: a ground-trut
 INPUT
 
 [Ground Truth Atomic Units]
+Each unit is listed with a zero-based integer ID in square brackets, followed by the unit text:
 {{ ground_truth_units }}
 
 [Predicted Atomic Units]
+Each unit is listed with a zero-based integer ID in square brackets, followed by the unit text:
 {{ predicted_units }}
 
 --------------------------------------------------
 ALIGNMENT RULES
 
-Match predicted units to ground-truth units based on semantic equivalence.
+Match predicted units to ground-truth units based on semantic equivalence. Use integer IDs throughout.
 
 - A match means the predicted unit preserves the same intent as the ground-truth unit, even if phrased differently.
-- A single ground-truth unit may align with multiple predicted units if the original idea is decomposed or split across them. In that case, list all matching predicted units under the same ground_truth entry in matched_pairs — do NOT create duplicate ground_truth entries.
-- Each ground-truth unit must appear at most once in matched_pairs.
-- If a predicted unit only partially matches a ground-truth unit but weakens, distorts, or misinterprets it, place it in misaligned_units instead of matched_pairs.
-- Any ground-truth unit not covered by prediction is missing.
-- Any predicted unit not supported by the ground truth is hallucinated.
-- critical_units are ground-truth units that represent key constraints, objectives, or requirements whose absence would fundamentally break the task.
-- critical_missing are critical units that are absent from the predicted units.
+- A single ground-truth unit may align with multiple predicted units if the original idea is decomposed or split across them. In that case, list all matching predicted IDs under the same ground_truth entry in matched_pairs — do NOT create duplicate ground_truth entries.
+- Each ground-truth ID must appear at most once in matched_pairs.
+- If a predicted unit only partially matches a ground-truth unit but weakens, distorts, or misinterprets it, place its ID in misaligned_units instead of matched_pairs.
+- Any ground-truth ID not covered by prediction goes in missing_units.
+- Any predicted ID not supported by the ground truth goes in hallucinated_units.
+- critical_units are IDs of ground-truth units that represent key constraints, objectives, or requirements whose absence would fundamentally break the task.
+- critical_missing are IDs of critical ground-truth units that are absent from the predicted units.
 
 --------------------------------------------------
 IMPORTANT EVALUATION RULES
@@ -37,38 +39,23 @@ IMPORTANT EVALUATION RULES
 --------------------------------------------------
 OUTPUT FORMAT
 
-Return ONLY valid JSON with this exact structure:
+Return ONLY valid JSON using integer IDs from the input lists:
 
 {
-  "predicted_units": [
-    "..."
-  ],
-  "ground_truth_units": [
-    "..."
-  ],
   "matched_pairs": [
     {
-      "ground_truth": "...",
-      "predicted": ["...", "..."]
+      "ground_truth": 0,
+      "predicted": [2, 5]
     }
   ],
-  "missing_units": [
-    "..."
-  ],
-  "hallucinated_units": [
-    "..."
-  ],
+  "missing_units": [1, 3],
+  "hallucinated_units": [0, 4],
   "misaligned_units": [
     {
-      "predicted": "...",
-      "ground_truth": "...",
-      "reason": "..."
+      "predicted": 1,
+      "ground_truth": 2
     }
   ],
-  "critical_units": [
-    "..."
-  ],
-  "critical_missing": [
-    "..."
-  ]
+  "critical_units": [0, 1],
+  "critical_missing": [1]
 }

@@ -2,6 +2,7 @@
 #SBATCH --job-name=aunu_evaluation
 #SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/evaluation/output.log
 #SBATCH --mem=4GB
+#SBATCH --time=12:00:00
 #SBATCH --partition=feih100
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zzh2365@emory.edu
@@ -9,28 +10,29 @@
 REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 EVALUATOR_MODEL="gpt-5.4"
+REASONING_EFFORT="none"  # none | low | medium | high
 WORKERS=10
-STRATEGY="zero_shot_with_samples_reason"          # zero_shot | zero_shot_with_samples_reason | user_interaction ｜ hybrid
+STRATEGY="user_interaction"          # zero_shot | zero_shot_with_samples_reason | user_interaction ｜ hybrid
 
 # Datasets to evaluate — must match the slugs under agent/results/
 # Format: "dataset_name" (the HuggingFace id; slashes become underscores in the results dir)
 DATASETS=(
-    "alexfabbri/multi_news"
-    "santoshtyss/uk_legislation"
-    "starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    "thu-coai/esconv"
-    "ccdv/arxiv-summarization"
+    # "alexfabbri/multi_news"
+    # "santoshtyss/uk_legislation"
+    # "starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    # "thu-coai/esconv"
+    # "ccdv/arxiv-summarization"
     "ccdv/govreport-summarization"
-    "ccdv/mediasum"
-    "ccdv/patent-classification"
-    "ccdv/pubmed-summarization"
-    "mrSoul7766/ECTSum"
-    "HuggingFaceFW/fineweb-edu"
-    "HuggingFaceH4/MATH-500"
-    "danidanou/Reuters_Financial_News"
-    "Pavithree/eli5"
-    "FiscalNote/billsum"
-    "Harley-ml/lesswrong"
+    # "ccdv/mediasum"
+    # "ccdv/patent-classification"
+    # "ccdv/pubmed-summarization"
+    # "mrSoul7766/ECTSum"
+    # "HuggingFaceFW/fineweb-edu"
+    # "HuggingFaceH4/MATH-500"
+    # "danidanou/Reuters_Financial_News"
+    # "Pavithree/eli5"
+    # "FiscalNote/billsum"
+    # "Harley-ml/lesswrong"
 )
 
 RESULTS_BASE="${REPO_ROOT}/agent/results"
@@ -52,6 +54,7 @@ echo "=========================================="
 echo "  AUNU Evaluation Run ${LOG_ID}"
 echo "  Strategy : ${STRATEGY}"
 echo "  Model    : ${EVALUATOR_MODEL}"
+echo "  Reasoning: ${REASONING_EFFORT}"
 echo "  Workers  : ${WORKERS}"
 echo "  Log      : ${LOG_FILE}"
 [ -n "$TARGET_EXP" ] && echo "  Target   : Experiment${TARGET_EXP} only"
@@ -97,10 +100,11 @@ for DATASET in "${DATASETS[@]}"; do
     echo "  Evaluating ${EXP_NAME}..."
 
     python3 "${REPO_ROOT}/agent/scripts/run_evaluation.py" \
-      --input_path   "$OUTPUT_JSON" \
-      --output_path  "$EVAL_JSON" \
-      --evaluator_model "$EVALUATOR_MODEL" \
-      --workers "$WORKERS" \
+      --input_path       "$OUTPUT_JSON" \
+      --output_path      "$EVAL_JSON" \
+      --evaluator_model  "$EVALUATOR_MODEL" \
+      --reasoning_effort "$REASONING_EFFORT" \
+      --workers          "$WORKERS" \
       --resume \
       2>&1 | tee -a "$LOG_FILE"
 

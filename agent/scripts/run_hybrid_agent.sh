@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=second_gpt
+#SBATCH --job-name=gemini
 #SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
@@ -13,18 +13,18 @@ INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | de
 MAX_ITERATIONS=20                                   # max routing iterations per episode
 MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
-AGENT_MODEL="gpt-5.4"
+AGENT_MODEL="gemini-3.1-pro-preview"
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 DATASETS=(
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
+    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"

@@ -50,9 +50,11 @@ class AUNUEnv:
         self,
         evaluator: AtomicEvaluator,
         max_steps: int = 10,
+        data_sampled_file: str = "data_sampled_2.6.json",
     ):
         self.evaluator = evaluator
         self.max_steps = max_steps
+        self.data_sampled_file = data_sampled_file
         self._state: Optional[EpisodeState] = None
         self._user: Optional[MimicUser] = None
         self._data: Optional[dict] = None  # {defining_instances: [...], non_defining_instances: [...]}
@@ -229,12 +231,12 @@ class AUNUEnv:
 
         if self._data is None:
             json_path = os.path.join(
-                _DATA_SAMPLED_ROOT, s.task.dataset_name, "data_sampled_2.1.json"
+                _DATA_SAMPLED_ROOT, s.task.dataset_name, self.data_sampled_file
             )
             if not os.path.exists(json_path):
                 raise FileNotFoundError(
                     f"Sampled data not found: {json_path}. "
-                    f"Expected at AUNUEnv/data/data_sampled/{s.task.dataset_name}/data_sampled_2.1.json"
+                    f"Expected at AUNUEnv/data/data_sampled/{s.task.dataset_name}/{self.data_sampled_file}"
                 )
             with open(json_path, "r", encoding="utf-8") as f:
                 self._data = json.load(f)

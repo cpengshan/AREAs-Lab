@@ -157,6 +157,7 @@ def _anthropic_generate(model_name: str, prompt: str, **kwargs) -> dict:
     client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     max_tokens = kwargs.pop("max_tokens", 1024)
+    kwargs.pop("reasoning_effort", None)
     response = client.messages.create(
         model=model_name,
         max_tokens=max_tokens,

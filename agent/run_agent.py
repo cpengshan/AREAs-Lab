@@ -437,7 +437,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             cache_gold_units=True,
             cache_path=_gt_cache_path,
         )
-    env = AUNUEnv(evaluator=evaluator, max_steps=cfg.max_steps)
+    env = AUNUEnv(evaluator=evaluator, max_steps=cfg.max_steps, data_sampled_file=getattr(cfg, "data_sampled_file", "data_sampled_2.6.json"))
 
     persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
 

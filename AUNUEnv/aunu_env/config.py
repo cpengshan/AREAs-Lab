@@ -67,6 +67,10 @@ class AUNUEnvConfig:
     temperature: float = 0.0
     max_tokens: int = 4096
 
+    # File names (configurable so experiments can pin to a specific version)
+    synthesized_output_file: str = "synthesized_output_2.6.json"
+    data_sampled_file: str = "data_sampled_2.6.json"
+
     # Misc
     verbose: bool = False
 
@@ -79,7 +83,7 @@ class AUNUEnvConfig:
         # Auto-resolve dataset paths from dataset_name when not explicitly set.
         if self.dataset_name and not self.dataset_path:
             self.dataset_path = os.path.join(
-                _DATA_SYNTHESIZED_ROOT, self.dataset_name, "synthesized_output_2.6.json"
+                _DATA_SYNTHESIZED_ROOT, self.dataset_name, self.synthesized_output_file
             )
         if self.dataset_name and not self.data_csv_path:
             self.data_csv_path = os.path.join(

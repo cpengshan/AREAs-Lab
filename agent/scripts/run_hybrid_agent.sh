@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gemini
+#SBATCH --job-name=claude_h
 #SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
@@ -13,26 +13,26 @@ INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | de
 MAX_ITERATIONS=20                                   # max routing iterations per episode
 MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
-AGENT_MODEL="gemini-3.1-pro-preview"
+AGENT_MODEL="claude-sonnet-4-6"
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 DATASETS=(
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
     "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
+    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/hybrid"
@@ -52,9 +52,6 @@ else
   echo "Running hybrid Experiment${EXP_ID} across all datasets..."
 fi
 
-SEED_DIR="${REPO_ROOT}/agent/results/alexfabbri_multi_news/zero_shot/Experiment10"
-SEED_REQUIREMENT_FLAG="--seed_requirement_dir ${SEED_DIR}"
-echo "Seeding initial requirement from: ${SEED_DIR}"
 
 for ENTRY in "${DATASETS[@]}"; do
   DATA_DIR="${ENTRY%%:*}"
@@ -96,8 +93,7 @@ PYEOF
     --use_v2 \
     --communication_habit neutral \
     --no_eval \
-    $RESUME_FLAG \
-    $SEED_REQUIREMENT_FLAG
+    $RESUME_FLAG
 
 done
 

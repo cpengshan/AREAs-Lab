@@ -362,6 +362,34 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
     return result
 
 
+def _find_best_zero_shot_dir(dataset_name: str, aunu_model: str) -> str | None:
+    """Return the zero_shot ExperimentN dir with the largest N whose output.json matches aunu_model."""
+    zero_shot_base = os.path.join(RESULTS_DIR, dataset_name.replace("/", "_"), "zero_shot")
+    if not os.path.isdir(zero_shot_base):
+        return None
+    best_id, best_dir = -1, None
+    for entry in os.scandir(zero_shot_base):
+        if not entry.is_dir() or not entry.name.startswith("Experiment"):
+            continue
+        try:
+            exp_id = int(entry.name[len("Experiment"):])
+        except ValueError:
+            continue
+        output_path = os.path.join(entry.path, "output.json")
+        if not os.path.exists(output_path):
+            continue
+        try:
+            with open(output_path) as f:
+                data = json.load(f)
+            if data.get("args", {}).get("aunu_model") != aunu_model:
+                continue
+        except Exception:
+            continue
+        if exp_id > best_id:
+            best_id, best_dir = exp_id, entry.path
+    return best_dir
+
+
 def _load_seed_requirements(seed_dir: str) -> dict:
     """Load task_requirement_final values keyed by (persona_id, task_num) from a prior output.json."""
     path = os.path.join(seed_dir, "output.json")
@@ -470,8 +498,16 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
 
     seed_requirements: dict = {}
     if getattr(args, "seed_requirement_dir", None):
-        seed_requirements = _load_seed_requirements(args.seed_requirement_dir)
-        logger.info(f"Loaded {len(seed_requirements)} seed requirements from {args.seed_requirement_dir}")
+        seed_dir = args.seed_requirement_dir
+        seed_requirements = _load_seed_requirements(seed_dir)
+        logger.info(f"Loaded {len(seed_requirements)} seed requirements from {seed_dir}")
+    elif args.strategy == "hybrid":
+        seed_dir = _find_best_zero_shot_dir(cfg.dataset_name, cfg.agent_model)
+        if seed_dir:
+            seed_requirements = _load_seed_requirements(seed_dir)
+            logger.info(f"Auto-selected zero_shot seed dir: {seed_dir} ({len(seed_requirements)} requirements)")
+        else:
+            logger.info(f"No matching zero_shot experiment found for dataset={cfg.dataset_name}, model={cfg.agent_model}; will run zero_shot inline per task.")
 
     out_path = os.path.join(exp_dir, "output.json")
     eval_path = os.path.join(exp_dir, "eval_results.json")
@@ -574,8 +610,12 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 agent = DataInteractionV5Agent.from_config(cfg, max_turns=max_turns)
                 log = agent.run(env, task)
             elif args.strategy == "hybrid":
-                agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
                 seed_req = seed_requirements.get((task.persona_id, task_num))
+                if seed_req is None:
+                    logger.info(f"[{task.task_id}] No zero-shot seed found — running zero_shot first.")
+                    zs_log = ZeroShotAgent.from_config(cfg).run(env, task)
+                    seed_req = zs_log.get("task_requirement_final")
+                agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
                 log = agent.run(env, task, user, initial_requirement=seed_req)
             elif args.strategy == "hybrid_v2":
                 mid_turn = getattr(args, "mid_turn", 6)

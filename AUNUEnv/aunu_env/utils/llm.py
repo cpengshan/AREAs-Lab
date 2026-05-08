@@ -52,6 +52,10 @@ PRICING_DATA = {
     },
 }
 
+class _RefusalError(Exception):
+    """Raised when the model refuses to generate content (non-retryable)."""
+
+
 # OpenAI models that require max_completion_tokens instead of max_tokens
 _MAX_COMPLETION_TOKENS_MODELS = {"gpt-5.4", "gpt-5.4-mini", "gpt-5", "gpt-5-mini", "o3"}
 
@@ -172,6 +176,13 @@ def _anthropic_generate(model_name: str, prompt: str, **kwargs) -> dict:
     except KeyError:
         logger.warning(f"No pricing data for Anthropic model '{model_name}', cost set to 0.0")
         cost = 0.0
+    if response.stop_reason == "refusal":
+        raise _RefusalError("Anthropic refused to generate content (stop_reason='refusal').")
+    if not response.content:
+        raise ValueError(
+            f"Anthropic returned empty content (stop_reason={response.stop_reason!r}). "
+            "The prompt may be too long or max_tokens too small."
+        )
     return {
         "output": response.content[0].text,
         "input_tokens": usage.input_tokens,
@@ -269,6 +280,9 @@ def call_llm(
                 reasoning_effort=reasoning_effort,
             )
             return result
+        except _RefusalError as e:
+            logger.warning(f"LLM call refused (non-retryable): {e}")
+            raise RuntimeError(str(e)) from e
         except Exception as e:
             last_error = e
             logger.warning(f"LLM call failed (attempt {attempt + 1}/{retries}): {e}")

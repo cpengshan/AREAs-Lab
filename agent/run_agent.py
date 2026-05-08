@@ -638,6 +638,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
 
         except Exception as e:
             logger.error(f"[{task.task_id}] {label}FAILED: {e}", exc_info=True)
+            logger.error(f"[{task.task_id}] elevator_pitch:\n{task.elevator_pitch}")
             task_result = {
                 "messages": [],
                 "is_complete": False,

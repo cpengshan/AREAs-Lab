@@ -248,6 +248,15 @@ class AUNUEnv:
             )
         else:
             pool = self._data.get(split, [])
+            if not pool:
+                # Requested split is empty; fall back to all available instances.
+                logger.warning(
+                    f"Split '{split}' is empty for dataset '{s.task.dataset_name}'; falling back to 'all'."
+                )
+                pool = (
+                    self._data.get("defining_instances", [])
+                    + self._data.get("non_defining_instances", [])
+                )
 
         if not pool:
             raise ValueError(f"No instances found for split='{split}' in dataset '{s.task.dataset_name}'")

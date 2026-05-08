@@ -259,9 +259,9 @@ class HybridAgent:
         current_req = state.get("task_requirement_final", env_state.task.elevator_pitch)
         messages: list[Message] = []
 
-        _, _, _, info = env.step(inspect_data(n_samples=_N_SAMPLES, split="defining_instances"))
+        _, _, _, info = env.step(inspect_data(n_samples=_N_SAMPLES, split="non_defining_instances"))
         raw_samples = info.get("data_samples", [])
-        logger.info(f"[Hybrid] Data turn {turn}: sampled {len(raw_samples)} rows from defining_instances")
+        logger.info(f"[Hybrid] Data turn {turn}: sampled {len(raw_samples)} rows from non_defining_instances")
 
         start = datetime.now(timezone.utc).isoformat()
         prompt = render_template(

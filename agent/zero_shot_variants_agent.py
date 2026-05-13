@@ -320,14 +320,31 @@ class ZeroShotWithSamplesReasonAgent(_BaseZeroShotVariantAgent):
     _TEMPLATE_NAME = "zero_shot_with_samples_reason.jinja"
     _ACTION_NAME = "zero_shot_with_samples_reason"
 
+    def __init__(self, *args, initial_requirement: str | None = None, turn_id: int = 1, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._initial_requirement = initial_requirement
+        self._turn_id = turn_id
+
+    @classmethod
+    def from_config(cls, config: AUNUEnvConfig, split: str = "all",
+                    initial_requirement: str | None = None, turn_id: int = 1):
+        return cls(
+            model_name=config.agent_model,
+            temperature=config.effective_agent_temperature,
+            max_tokens=config.max_tokens,
+            split=split,
+            initial_requirement=initial_requirement,
+            turn_id=turn_id,
+        )
+
     def _build_template_kwargs(self, user_request: str, dataset_name: str, task) -> dict:
         data_samples = self._fetch_samples()
-        return {"user_instruction": user_request, "data_samples": data_samples}
+        return {"user_instruction": user_request, "data_samples": data_samples, "turn_id": self._turn_id}
 
     def process(self, state: AgentState) -> dict:
         obs = self._env.state
         task = obs.task
-        user_request = task.elevator_pitch
+        user_request = self._initial_requirement if self._initial_requirement else task.elevator_pitch
         dataset_name = task.dataset_name
 
         template_path = os.path.join(_PROMPTS_DIR, self._TEMPLATE_NAME)
@@ -382,7 +399,9 @@ class ZeroShotWithSamplesReasonAgent(_BaseZeroShotVariantAgent):
             "zero_shot_draft": requirement,
         }
 
-    def run(self, env, task) -> dict:
+    def run(self, env, task, initial_requirement: str | None = None) -> dict:
+        if initial_requirement is not None:
+            self._initial_requirement = initial_requirement
         self._modifications = []
         log = super().run(env, task)
         log["modifications"] = self._modifications

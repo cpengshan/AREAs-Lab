@@ -177,6 +177,11 @@ def parse_args():
         help="Path to a prior experiment directory whose output.json task_requirement_final values "
              "are used as the initial current_task_requirement for hybrid runs (e.g. zero_shot/Experiment10).",
     )
+    parser.add_argument(
+        "--turn_id", type=int, default=1,
+        help="Round number for multi-round pipelines (e.g. data_multi_rounds). "
+             "Passed to zero_shot_with_samples_reason so the prompt knows which iteration this is.",
+    )
     return parser.parse_args()
 
 
@@ -586,7 +591,13 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                 agent = ZeroShotWithSamplesAgent.from_config(cfg, split=args.split)
                 log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_samples_reason":
-                agent = ZeroShotWithSamplesReasonAgent.from_config(cfg, split=args.split)
+                seed_req = seed_requirements.get((task.persona_id, task_num))
+                turn_id = getattr(args, "turn_id", 1)
+                agent = ZeroShotWithSamplesReasonAgent.from_config(
+                    cfg, split=args.split,
+                    initial_requirement=seed_req,
+                    turn_id=turn_id,
+                )
                 log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_data_analysis_and_samples":
                 agent = ZeroShotWithDataAnalysisAndSamplesAgent.from_config(cfg, split=args.split)

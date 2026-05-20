@@ -466,26 +466,27 @@ class HybridAgent:
 
         return workflow.compile()
 
-    def run(self, env, task, user, initial_requirement: str | None = None) -> dict:
+    def run(self, env, dataset_name: str, persona_id, task_id: str,
+            initial_requirement: str | None = None) -> dict:
         """Run a complete hybrid episode and return the trajectory log.
 
         Args:
-            env: AREAEnv instance (already initialised with evaluator).
-            task: TaskInstance to solve.
-            user: MimicUser instance (passive or persona-conditioned).
-            initial_requirement: Optional pre-seeded task requirement to use as the
-                starting current_task_requirement (e.g. from a prior zero-shot run).
-                When provided the zero-shot node is skipped and the router sees this
-                as its first current requirement instead of the raw elevator pitch.
+            env: AREAEnv instance (with evaluator, user, and registry pre-configured).
+            dataset_name: Dataset identifier, e.g. "alexfabbri/multi_news".
+            persona_id: Persona identifier (int, "user_N", or "persona_N").
+            task_id: Task identifier string, e.g. "user_1_task_0".
+            initial_requirement: Optional pre-seeded task requirement (e.g. from a
+                prior zero-shot run). When provided the router sees this as its first
+                current requirement instead of the raw elevator pitch.
 
         Returns:
             Trajectory log dict from env.get_trajectory_log(), augmented with
             the full agent message log under the key 'agent_messages'.
         """
-        env.reset(task, user)
+        env.reset(dataset_name, persona_id, task_id)
         self._env = env
 
-        seed = initial_requirement or task.elevator_pitch
+        seed = initial_requirement or env.state.task.elevator_pitch
         initial_state: HybridState = {
             "messages": [],
             "is_complete": False,

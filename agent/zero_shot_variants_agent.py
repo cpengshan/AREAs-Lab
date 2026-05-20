@@ -194,10 +194,8 @@ class _BaseZeroShotVariantAgent:
         workflow.add_edge("area_agent", END)
         return workflow.compile()
 
-    def run(self, env, task) -> dict:
-        from AREAEnv.area_env.users import MimicUser
-        user = MimicUser(model_name=self.model_name)
-        env.reset(task, user)
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
+        env.reset(dataset_name, persona_id, task_id)
         self._env = env
 
         initial_state: AgentState = {
@@ -307,11 +305,12 @@ class DataInteractionAgent(_BaseZeroShotVariantAgent):
             "zero_shot_draft": requirement,
         }
 
-    def run(self, env, task, initial_requirement: str | None = None) -> dict:
+    def run(self, env, dataset_name: str, persona_id, task_id: str,
+            initial_requirement: str | None = None) -> dict:
         if initial_requirement is not None:
             self._initial_requirement = initial_requirement
         self._modifications = []
-        log = super().run(env, task)
+        log = super().run(env, dataset_name, persona_id, task_id)
         log["modifications"] = self._modifications
         return log
 

@@ -47,7 +47,7 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
         sys.path.insert(0, _p)
 
 from AREAEnv.area_env.config import AREAEnvConfig
-from AREAEnv.area_env.dataset.loader import load_dataset
+from AREAEnv.area_env.dataset.loader import load_dataset, DatasetRegistry
 from AREAEnv.area_env.env.area_env import AREAEnv
 from AREAEnv.area_env.evaluator.atomic_evaluator import AtomicEvaluator
 from AREAEnv.area_env.evaluator.metrics import aggregate_results
@@ -107,8 +107,8 @@ def parse_args():
                         help="LLM model for the evaluator (overrides config)")
     parser.add_argument(
         "--persona",
-        type=int, nargs="+", required=True,
-        help="One or more persona IDs (e.g. --persona 1 2 3)",
+        type=int, nargs="*", default=None,
+        help="Persona IDs to run (e.g. --persona 1 2 3). Omit to run all personas.",
     )
     parser.add_argument(
         "--dataset",
@@ -422,6 +422,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
     max_turns = args.max_turns if args.max_turns is not None else 5
     max_iterations = args.max_iterations if args.max_iterations is not None else 6
 
+    # ── Evaluator ──────────────────────────────────────────────────────────
     if getattr(args, "no_eval", False):
         evaluator = _NoOpEvaluator()
     else:
@@ -434,23 +435,30 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
             cache_gold_units=True,
             cache_path=_gt_cache_path,
         )
-    env = AREAEnv(evaluator=evaluator, max_steps=cfg.max_steps, data_sampled_file=getattr(cfg, "data_sampled_file", "data_sampled_2.6.json"))
 
-    persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
+    # ── Dataset registry — env owns all data access ────────────────────────
+    registry = DatasetRegistry(
+        data_synthesized_root=cfg.data_synthesized_root,
+        synthesized_output_file=cfg.synthesized_output_file,
+    )
 
+    # ── Enumerate task IDs via the registry (agents receive only identifiers) ──
     all_tasks = load_dataset(
         synthesized_path=cfg.dataset_path,
         dataset_name=cfg.dataset_name,
     )
-    tasks = sorted(
-        [t for t in all_tasks if t.persona_id in args.persona],
-        key=lambda t: (t.persona_id, int(t.task_id.rsplit("_", 1)[-1])),
-    )
+    if args.persona:
+        tasks = [t for t in all_tasks if t.persona_id in args.persona]
+    else:
+        tasks = list(all_tasks)
+    tasks = sorted(tasks, key=lambda t: (t.persona_id, int(t.task_id.rsplit("_", 1)[-1])))
     if not tasks:
-        raise ValueError(f"No tasks found for personas {args.persona} in {cfg.dataset_path}")
-    logger.info(f"Running {len(tasks)} tasks for personas {args.persona}")
+        raise ValueError(f"No tasks found for dataset '{cfg.dataset_name}' "
+                         f"(persona filter: {args.persona})")
+    persona_desc = str(args.persona) if args.persona else "all"
+    logger.info(f"Running {len(tasks)} tasks for personas={persona_desc}")
 
-    # Load communication habit dict if using MimicUserV2
+    # ── Communication habit (MimicUserV2) ──────────────────────────────────
     if args.use_v2:
         if not args.communication_habit:
             raise ValueError("--communication_habit (passive/neutral/active) is required with --use_v2")
@@ -464,6 +472,31 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
     else:
         habit_dict = None
         habit_key = None
+
+    # ── User (created once — stateless across tasks) ───────────────────────
+    persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
+    if args.use_v2:
+        user = MimicUserV2(
+            model_name=cfg.user_model,
+            habit=habit_dict,
+            temperature=cfg.effective_user_temperature,
+        )
+    else:
+        user = MimicUser(
+            model_name=cfg.user_model,
+            persona_config=persona_config,
+            temperature=cfg.effective_user_temperature,
+        )
+
+    # ── Environment (owns user + registry) ────────────────────────────────
+    env = AREAEnv(
+        evaluator=evaluator,
+        user=user,
+        registry=registry,
+        max_steps=cfg.max_steps,
+        data_sampled_root=cfg.data_sampled_root,
+        data_sampled_file=getattr(cfg, "data_sampled_file", "data_sampled.json"),
+    )
 
     seed_requirements: dict = {}
     if getattr(args, "seed_requirement_dir", None):
@@ -523,24 +556,12 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
         label = f"habit={args.communication_habit} " if habit_key else ""
         logger.info(f"[{task.task_id}] {label}Starting (persona={task.persona_id}, task={task_num})...")
 
-        if args.use_v2:
-            user = MimicUserV2(
-                model_name=cfg.user_model,
-                habit=habit_dict,
-                temperature=cfg.effective_user_temperature,
-            )
-        else:
-            user = MimicUser(
-                model_name=cfg.user_model,
-                persona_config=persona_config,
-                temperature=cfg.effective_user_temperature,
-            )
         log = None
 
         try:
             if args.strategy == "zero_shot":
                 agent = ZeroShotAgent.from_config(cfg)
-                log = agent.run(env, task)
+                log = agent.run(env, task.dataset_name, task.persona_id, task.task_id)
             elif args.strategy == "data_interaction":
                 seed_req = seed_requirements.get((task.persona_id, task_num))
                 turn_id = getattr(args, "turn_id", 1)
@@ -549,7 +570,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
                     initial_requirement=seed_req,
                     turn_id=turn_id,
                 )
-                log = agent.run(env, task)
+                log = agent.run(env, task.dataset_name, task.persona_id, task.task_id)
             elif args.strategy == "hybrid":
                 logger.info(f"[{task.task_id}] Generating zero_shot seed (no evaluation).")
                 _zs_template = os.path.join(os.path.dirname(__file__), "prompts", "zero_shot.jinja")
@@ -559,10 +580,11 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
                                       temperature=cfg.effective_agent_temperature)
                 seed_req = _zs_result["output"]
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
-                log = agent.run(env, task, user, initial_requirement=seed_req)
+                log = agent.run(env, task.dataset_name, task.persona_id, task.task_id,
+                                initial_requirement=seed_req)
             else:
                 agent = UserInteractionAgent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task, user)
+                log = agent.run(env, task.dataset_name, task.persona_id, task.task_id)
 
             task_result = _format_task_result(log, task, args, cfg, task_num)
             if habit_key:

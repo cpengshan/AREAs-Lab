@@ -128,20 +128,19 @@ class ZeroShotAgent:
         workflow.add_edge("area_agent", END)
         return workflow.compile()
 
-    def run(self, env, task) -> dict:
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
         """Run a complete zero-shot episode and return the trajectory log.
 
         Args:
-            env: AREAEnv instance (already initialised with evaluator).
-            task: TaskInstance to solve.
+            env: AREAEnv instance (with evaluator, user, and registry pre-configured).
+            dataset_name: Dataset identifier, e.g. "alexfabbri/multi_news".
+            persona_id: Persona identifier (int, "user_N", or "persona_N").
+            task_id: Task identifier string, e.g. "user_1_task_0".
 
         Returns:
             Trajectory log dict from env.get_trajectory_log().
         """
-        # Reset env with a passive MimicUser (unused in zero-shot but required by API)
-        from AREAEnv.area_env.users import MimicUser
-        user = MimicUser(model_name=self.model_name)
-        obs, _ = env.reset(task, user)
+        env.reset(dataset_name, persona_id, task_id)
         self._env = env
 
         initial_state: AgentState = {

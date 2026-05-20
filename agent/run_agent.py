@@ -51,6 +51,8 @@ from AREAEnv.area_env.dataset.loader import load_dataset
 from AREAEnv.area_env.env.area_env import AREAEnv
 from AREAEnv.area_env.evaluator.atomic_evaluator import AtomicEvaluator
 from AREAEnv.area_env.evaluator.metrics import aggregate_results
+from AREAEnv.area_env.utils.llm import call_llm
+from AREAEnv.area_env.utils.jinja_utils import render_template
 
 
 class _NoOpEvaluator:
@@ -468,13 +470,6 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
         seed_dir = args.seed_requirement_dir
         seed_requirements = _load_seed_requirements(seed_dir)
         logger.info(f"Loaded {len(seed_requirements)} seed requirements from {seed_dir}")
-    elif args.strategy == "hybrid":
-        seed_dir = _find_best_zero_shot_dir(cfg.dataset_name, cfg.agent_model)
-        if seed_dir:
-            seed_requirements = _load_seed_requirements(seed_dir)
-            logger.info(f"Auto-selected zero_shot seed dir: {seed_dir} ({len(seed_requirements)} requirements)")
-        else:
-            logger.info(f"No matching zero_shot experiment found for dataset={cfg.dataset_name}, model={cfg.agent_model}; will run zero_shot inline per task.")
 
     out_path = os.path.join(exp_dir, "output.json")
     eval_path = os.path.join(exp_dir, "eval_results.json")
@@ -556,11 +551,13 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
                 )
                 log = agent.run(env, task)
             elif args.strategy == "hybrid":
-                seed_req = seed_requirements.get((task.persona_id, task_num))
-                if seed_req is None:
-                    logger.info(f"[{task.task_id}] No zero-shot seed found — running zero_shot first.")
-                    zs_log = ZeroShotAgent.from_config(cfg).run(env, task)
-                    seed_req = zs_log.get("task_requirement_final")
+                logger.info(f"[{task.task_id}] Generating zero_shot seed (no evaluation).")
+                _zs_template = os.path.join(os.path.dirname(__file__), "prompts", "zero_shot.jinja")
+                _zs_prompt = render_template(_zs_template, user_instruction=task.elevator_pitch)
+                _zs_result = call_llm(cfg.agent_model, _zs_prompt,
+                                      max_tokens=cfg.max_tokens,
+                                      temperature=cfg.effective_agent_temperature)
+                seed_req = _zs_result["output"]
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
                 log = agent.run(env, task, user, initial_requirement=seed_req)
             else:

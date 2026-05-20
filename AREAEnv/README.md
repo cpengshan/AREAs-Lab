@@ -12,7 +12,7 @@ AREAEnv evaluates how an agent transforms an underspecified user request into a 
 |---|---|---|
 | **Domain** | Software requirements elicitation | AI task requirement understanding |
 | **Gold object** | User stories / interview coverage | Complete task requirement specification |
-| **Action space** | Single string (natural language question) | Typed dict: `ask_user` / `inspect_data` / `propose_requirement_update` / `finish` |
+| **Action space** | Single string (natural language question) | Typed dict: `ask_user` / `inspect_data` / `finish` |
 | **Information sources** | User only | User + dataset samples |
 | **User simulator** | One mode (quality levels: high/med/low) | Two modes: passive confirmation or persona-conditioned |
 | **Evaluation** | TKQR, ORA, elicitation ratio | Atomic unit precision / recall / F1 (3-stage LLM pipeline) |
@@ -37,13 +37,10 @@ AREAEnv/
       state.py                     # EpisodeState dataclass
       area_env.py                  # AREAEnv: reset / step / get_trajectory_log
     users/
-      mimic_user.py                # MimicUser: passive or persona-conditioned
+      mimic_user.py             # MimicUser: communication habit-conditioned
       prompts/
-        passive_user.jinja         # Prompt for passive confirmation mode
-        persona_user.jinja         # Prompt for persona-conditioned mode
-        feedback_mimic_user.jinja  # Feedback prompt (current)
-        feedback_mimic_user_v1.jinja
-        feedback_mimic_user_v2.jinja
+        feedback_mimic_user_v3.jinja  # Feedback prompt (current)
+        responser_habit.json          # passive/neutral/active habit configs
     evaluator/
       atomic_evaluator.py          # 3-stage LLM evaluation pipeline
       metrics.py                   # compute_scores(), aggregate_results()
@@ -82,7 +79,7 @@ area_env
   ├── AREAEnvConfig   — experiment configuration
   ├── load_dataset    — load TaskInstance objects from synthesized_output.json
   ├── AREAEnv         — the environment (reset / step / get_trajectory_log)
-  ├── MimicUser       — simulated user (passive or persona-conditioned)
+  ├── MimicUser     — simulated user with configurable communication habit
   └── AtomicEvaluator — LLM-based requirement evaluator
 ```
 
@@ -94,15 +91,11 @@ Each `env.step()` call receives an action dict:
 |---|---|---|
 | `ask_user` | `question` | MIMIC user generates a response |
 | `inspect_data` | `n_samples`, `query` | Returns sampled CSV rows |
-| `propose_requirement_update` | `updated_requirement` | Updates the current draft |
 | `finish` | `final_requirement` | Evaluates and ends the episode |
 
-### MIMIC User Modes
+### MIMIC User
 
-`MimicUser(model_name, persona_config=None)`:
-
-- **Passive** (`persona_config=None`) — only confirms, rejects, or minimally clarifies the agent's proposals; never volunteers extra information.
-- **Persona-conditioned** (`persona_config=dict`) — a richer behavioral model driven by `expertise_level`, `verbosity`, `ambiguity_tolerance`, `preference_stability`, and `communication_style`. The underlying gold task requirement stays the same; only the response style changes.
+`MimicUser(model_name, habit)` — simulates user feedback conditioned on a pre-loaded communication habit dict (one of `passive`, `neutral`, or `active` from `responser_habit.json`). The habit controls how proactively and verbosely the user volunteers information.
 
 ### Evaluation Pipeline
 
@@ -190,10 +183,12 @@ The factory must have the signature `factory(user: MimicUser) -> policy`.
 ```python
 from area_env import AREAEnv, MimicUser, AtomicEvaluator, load_dataset, AREAEnvConfig
 from area_env.env.actions import ask_user, finish
+import json
 
 config = AREAEnvConfig.from_yaml("area_env/configs/zero_shot.yaml")
 tasks   = load_dataset(config.dataset_path, config.data_csv_path)
-user    = MimicUser(model_name=config.user_model)
+habits  = json.load(open("area_env/users/prompts/responser_habit.json"))
+user    = MimicUser(model_name=config.user_model, habit=habits["neutral"])
 env     = AREAEnv(evaluator=AtomicEvaluator(config.evaluator_model), max_steps=config.max_steps)
 
 for task in tasks:
@@ -224,8 +219,8 @@ Each experiment produces a timestamped JSON file in `output_dir`:
       "n_steps": 7,
       "total_cost": 0.0042,
       "trajectory": [
-        { "step": 1, "action": { "type": "propose_requirement_update", "..." }, "response": "..." },
-        { "step": 2, "action": { "type": "ask_user", "question": "..." }, "response": "..." },
+        { "step": 1, "action": { "type": "ask_user", "question": "..." }, "response": "..." },
+        { "step": 2, "action": { "type": "inspect_data", "..." }, "response": "..." },
         "..."
       ],
       "final_requirement": "### 1. Strategic Intent\n...",

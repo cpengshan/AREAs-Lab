@@ -1,16 +1,16 @@
 #!/bin/bash
 #SBATCH --job-name=neutral
-#SBATCH --output=/local/scratch/zzh2365/AREA/agent/logs/hybrid/output.log
+#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zzh2365@emory.edu
 
-REPO_ROOT="/local/scratch/zzh2365/AREA"
+REPO_ROOT="/local/scratch/zzh2365/AUNU"
 
 CONFIG="${REPO_ROOT}/AREAEnv/area_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
-MAX_ITERATIONS=20                                   # max routing iterations per episode
+MAX_ITERATIONS=3                                  # max routing iterations per episode
 MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
 AGENT_MODEL="gemini-3.1-pro-preview"                 # "gpt-5.4" | "claude-sonnet-4-6" | "gemini-3.1-pro-preview"
@@ -92,7 +92,7 @@ PYEOF
     --log_file_path "$LOG_FILE" \
     --use_v2 \
     --communication_habit active \
-    --no_eval \
+    \
     $RESUME_FLAG
 
 done

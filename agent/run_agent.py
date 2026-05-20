@@ -63,7 +63,6 @@ class _NoOpEvaluator:
                 "counts": {}, "scores": {}, "gold_categories": {},
                 "pred_categories": {}, "subcategory_scores": {}, "cost": 0.0}
 from AREAEnv.area_env.users.mimic_user import MimicUser
-from AREAEnv.area_env.users.mimic_user_v2 import MimicUserV2
 
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
@@ -150,13 +149,9 @@ def parse_args():
         help="Skip evaluation at the end of each episode; only save output.json",
     )
     parser.add_argument(
-        "--use_v2", action="store_true",
-        help="Use MimicUserV2 (feedback_mimic_user_v3.jinja + responser_habit.json)",
-    )
-    parser.add_argument(
         "--communication_habit", type=str, default=None,
         choices=["passive", "neutral", "active"],
-        help="Communication habit for MimicUserV2 (passive/neutral/active). Required with --use_v2.",
+        help="Communication habit for MimicUser (passive/neutral/active). Required for user_interaction and hybrid strategies.",
     )
     parser.add_argument(
         "--seed_requirement_dir", type=str, default=None,
@@ -458,35 +453,23 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
     persona_desc = str(args.persona) if args.persona else "all"
     logger.info(f"Running {len(tasks)} tasks for personas={persona_desc}")
 
-    # ── Communication habit (MimicUserV2) ──────────────────────────────────
-    if args.use_v2:
-        if not args.communication_habit:
-            raise ValueError("--communication_habit (passive/neutral/active) is required with --use_v2")
-        _habit_file = os.path.join(
-            _REPO_ROOT, "AREAEnv", "area_env", "users", "prompts", "responser_habit.json"
-        )
-        with open(_habit_file) as f:
-            _all_habits = json.load(f)
-        habit_dict = _all_habits[args.communication_habit]
-        habit_key = f"habit_{args.communication_habit}"
-    else:
-        habit_dict = None
-        habit_key = None
+    # ── Communication habit ─────────────────────────────────────────────────
+    if args.strategy in ("user_interaction", "hybrid") and not args.communication_habit:
+        raise ValueError("--communication_habit (passive/neutral/active) is required for user_interaction and hybrid strategies")
+    _habit_file = os.path.join(
+        _REPO_ROOT, "AREAEnv", "area_env", "users", "prompts", "responser_habit.json"
+    )
+    with open(_habit_file) as f:
+        _all_habits = json.load(f)
+    habit_dict = _all_habits[args.communication_habit] if args.communication_habit else _all_habits["neutral"]
+    habit_key = f"habit_{args.communication_habit}" if args.communication_habit else None
 
     # ── User (created once — stateless across tasks) ───────────────────────
-    persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
-    if args.use_v2:
-        user = MimicUserV2(
-            model_name=cfg.user_model,
-            habit=habit_dict,
-            temperature=cfg.effective_user_temperature,
-        )
-    else:
-        user = MimicUser(
-            model_name=cfg.user_model,
-            persona_config=persona_config,
-            temperature=cfg.effective_user_temperature,
-        )
+    user = MimicUser(
+        model_name=cfg.user_model,
+        habit=habit_dict,
+        temperature=cfg.effective_user_temperature,
+    )
 
     # ── Environment (owns user + registry) ────────────────────────────────
     env = AREAEnv(
@@ -520,7 +503,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
                 "mimic_model": cfg.user_model,
                 "evaluator_model": cfg.evaluator_model,
                 "persona": args.persona,
-                "communication_habit": args.communication_habit if args.use_v2 else None,
+                "communication_habit": args.communication_habit,
                 "dataset": cfg.dataset_name,
                 "input_type": args.input_type,
                 "max_turns": max_turns,

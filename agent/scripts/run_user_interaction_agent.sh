@@ -63,7 +63,6 @@ for DATASET in "${DATASETS[@]}"; do
     --log_file_path "$LOG_FILE" \
     --use_v2 \
     --communication_habit "$COMMUNICATION_HABIT" \
-    --no_eval \
     $RESUME_FLAG
 
 done

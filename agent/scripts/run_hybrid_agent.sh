@@ -1,38 +1,38 @@
 #!/bin/bash
-#SBATCH --job-name=claude_h
-#SBATCH --output=/local/scratch/zzh2365/AUNU/agent/logs/hybrid/output.log
+#SBATCH --job-name=neutral
+#SBATCH --output=/local/scratch/zzh2365/AREA/agent/logs/hybrid/output.log
 #SBATCH --mem=2GB
 #SBATCH --partition=feih100
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=zzh2365@emory.edu
 
-REPO_ROOT="/local/scratch/zzh2365/AUNU"
+REPO_ROOT="/local/scratch/zzh2365/AREA"
 
-CONFIG="${REPO_ROOT}/AUNUEnv/aunu_env/configs/default.yaml"
+CONFIG="${REPO_ROOT}/AREAEnv/area_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
 MAX_ITERATIONS=20                                   # max routing iterations per episode
 MAX_STEPS=40
 OUTPUT_DIR="${REPO_ROOT}/results/hybrid"
-AGENT_MODEL="claude-sonnet-4-6"
+AGENT_MODEL="gemini-3.1-pro-preview"                 # "gpt-5.4" | "claude-sonnet-4-6" | "gemini-3.1-pro-preview"
 
 # Datasets to run — format: "data_home_dir:dataset_name"
 DATASETS=(
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
-    "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
-    # "${REPO_ROOT}/AUNUEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
+    "${REPO_ROOT}/AREAEnv/data/data_synthesized/alexfabbri/multi_news:alexfabbri/multi_news"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/santoshtyss/uk_legislation:santoshtyss/uk_legislation"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/starmpcc/Asclepius-Synthetic-Clinical-Notes:starmpcc/Asclepius-Synthetic-Clinical-Notes"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/thu-coai/esconv:thu-coai/esconv"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/ccdv/arxiv-summarization:ccdv/arxiv-summarization"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/ccdv/govreport-summarization:ccdv/govreport-summarization"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/ccdv/mediasum:ccdv/mediasum"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/ccdv/patent-classification:ccdv/patent-classification"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/ccdv/pubmed-summarization:ccdv/pubmed-summarization"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/mrSoul7766/ECTSum:mrSoul7766/ECTSum"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/HuggingFaceFW/fineweb-edu:HuggingFaceFW/fineweb-edu"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/HuggingFaceH4/MATH-500:HuggingFaceH4/MATH-500"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/danidanou/Reuters_Financial_News:danidanou/Reuters_Financial_News"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/Pavithree/eli5:Pavithree/eli5"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/FiscalNote/billsum:FiscalNote/billsum"
+    # "${REPO_ROOT}/AREAEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
 LOG_DIR="${REPO_ROOT}/agent/logs/hybrid"
@@ -91,7 +91,7 @@ PYEOF
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
     --use_v2 \
-    --communication_habit neutral \
+    --communication_habit active \
     --no_eval \
     $RESUME_FLAG
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Entry point for running AUNUEnv-based agents.
+"""Entry point for running AREAEnv-based agents.
 
-Mirrors the interface of scripts/agents/run_aunu_interaction.py but routes
-all MIMIC-user interaction through AUNUEnv, keeping the agent's strategy as
+Mirrors the interface of scripts/agents/run_area_interaction.py but routes
+all MIMIC-user interaction through AREAEnv, keeping the agent's strategy as
 a policy over the environment's action space.
 
 Usage examples:
@@ -46,11 +46,11 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.dataset.loader import load_dataset
-from AUNUEnv.aunu_env.env.aunu_env import AUNUEnv
-from AUNUEnv.aunu_env.evaluator.atomic_evaluator import AtomicEvaluator
-from AUNUEnv.aunu_env.evaluator.metrics import aggregate_results
+from AREAEnv.area_env.config import AREAEnvConfig
+from AREAEnv.area_env.dataset.loader import load_dataset
+from AREAEnv.area_env.env.area_env import AREAEnv
+from AREAEnv.area_env.evaluator.atomic_evaluator import AtomicEvaluator
+from AREAEnv.area_env.evaluator.metrics import aggregate_results
 
 
 class _NoOpEvaluator:
@@ -60,28 +60,16 @@ class _NoOpEvaluator:
         return {"gold_units": [], "predicted_units": [], "comparison": {},
                 "counts": {}, "scores": {}, "gold_categories": {},
                 "pred_categories": {}, "subcategory_scores": {}, "cost": 0.0}
-from AUNUEnv.aunu_env.users.mimic_user import MimicUser
-from AUNUEnv.aunu_env.users.mimic_user_v2 import MimicUserV2
+from AREAEnv.area_env.users.mimic_user import MimicUser
+from AREAEnv.area_env.users.mimic_user_v2 import MimicUserV2
 
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
-from data_interaction_agent import DataInteractionAgent
-from data_interaction_v2_agent import DataInteractionV2Agent
-from data_interaction_v3_agent import DataInteractionV3Agent
-from data_interaction_v4_agent import DataInteractionV4Agent
-from data_interaction_v5_agent import DataInteractionV5Agent
 from hybrid_agent import HybridAgent
-from hybrid_agent_v2 import HybridV2Agent
-from zero_shot_variants_agent import (
-    ZeroShotWithDataAnalysisAgent,
-    ZeroShotWithSamplesAgent,
-    ZeroShotWithSamplesReasonAgent,
-    ZeroShotWithDataAnalysisAndSamplesAgent,
-    ZeroShotWithDataSummaryAgent,
-)
+from zero_shot_variants_agent import ZeroShotWithSamplesReasonAgent
 
 RESULTS_DIR = os.path.join(_AGENT_DIR, "results")
-DATA_SYNTHESIZED_DIR = os.path.join(_REPO_ROOT, "AUNUEnv/data/data_synthesized")
+DATA_SYNTHESIZED_DIR = os.path.join(_REPO_ROOT, "AREAEnv/data/data_synthesized")
 
 
 logger = logging.getLogger(__name__)
@@ -93,26 +81,24 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run AUNUEnv agents (zero-shot or user-interaction)"
+        description="Run AREAEnv agents (zero-shot or user-interaction)"
     )
     parser.add_argument(
         "--config", type=str, default=None,
-        help="Path to AUNUEnvConfig YAML file. All model/temperature/max_steps/user_mode "
+        help="Path to AREAEnvConfig YAML file. All model/temperature/max_steps/user_mode "
              "settings are read from the config; CLI flags override individual fields.",
     )
     parser.add_argument(
         "--strategy",
         choices=[
-            "zero_shot", "zero_shot_with_data_analysis", "zero_shot_with_samples",
-            "zero_shot_with_samples_reason",
-            "zero_shot_with_data_analysis_and_samples", "zero_shot_with_data_summary",
-            "user_interaction", "data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5", "hybrid", "hybrid_v2",
+            "zero_shot", "zero_shot_with_samples_reason",
+            "user_interaction", "hybrid",
         ],
         default="zero_shot",
         help="Agent strategy (default: zero_shot)",
     )
     parser.add_argument("--agent_model", type=str, default=None,
-                        help="LLM model for the AUNU agent (overrides config)")
+                        help="LLM model for the AREA agent (overrides config)")
     parser.add_argument("--mimic_model", type=str, default=None,
                         help="LLM model for the MIMIC user (overrides config)")
     parser.add_argument("--evaluator_model", type=str, default=None,
@@ -136,8 +122,6 @@ def parse_args():
                         help="Max clarification turns (user_interaction only; overrides config)")
     parser.add_argument("--max_iterations", type=int, default=None,
                         help="Max routing iterations for hybrid strategy (overrides config)")
-    parser.add_argument("--mid_turn", type=int, default=6,
-                        help="Turn at which hybrid_v2 fires mid-synthesis and enters Phase 2 (default: 6)")
     parser.add_argument("--max_steps", type=int, default=None,
                         help="Max env steps per episode (overrides config)")
     parser.add_argument(
@@ -185,12 +169,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def _resolve_config(args: argparse.Namespace) -> "AUNUEnvConfig":
+def _resolve_config(args: argparse.Namespace) -> "AREAEnvConfig":
     """Load config from YAML (if provided) then apply any CLI overrides."""
     if args.config:
-        cfg = AUNUEnvConfig.from_yaml(args.config)
+        cfg = AREAEnvConfig.from_yaml(args.config)
     else:
-        cfg = AUNUEnvConfig()
+        cfg = AREAEnvConfig()
 
     # CLI flags take precedence over YAML values when explicitly provided.
     if args.agent_model is not None:
@@ -296,10 +280,10 @@ def _format_eval_result(log: dict) -> dict:
     return result
 
 
-def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnvConfig", task_num: int) -> dict:
+def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AREAEnvConfig", task_num: int) -> dict:
     """Convert an agent trajectory log into the canonical output.json task format.
 
-    Matches the schema used by scripts/agents/run_aunu_interaction.py:
+    Matches the schema used by scripts/agents/run_area_interaction.py:
       {
         "messages": [...],
         "is_complete": true,
@@ -333,20 +317,6 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
              "content": e["content"], "thought": e.get("thought", "")}
             for e in log["conversation_history"]
         ]
-    if args.strategy in ("data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("format_reflection_history"):
-        result["format_reflection_history"] = log["format_reflection_history"]
-    if args.strategy in ("data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("intermediate_evals"):
-        result["intermediate_evals"] = log["intermediate_evals"]
-    if args.strategy in ("data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("rewrite_history"):
-        result["rewrite_history"] = log["rewrite_history"]
-    if args.strategy in ("data_interaction", "data_interaction_v2", "data_interaction_v3", "data_interaction_v4", "data_interaction_v5") and log.get("data_inspection_history"):
-        result["data_inspection_history"] = [
-            {"inspection_idx": e["inspection_idx"], "timestamp": e.get("timestamp", ""),
-             "step": e["step"], "query": e.get("query", ""),
-             "n_samples": e["n_samples"], "row_indices": e.get("row_indices", []),
-             "input_col": e.get("input_col", ""), "samples": e["samples"]}
-            for e in log["data_inspection_history"]
-        ]
     if args.strategy == "hybrid":
         result["router_history"] = log.get("router_history", [])
         result["user_interactions"] = log.get("user_interactions", [])
@@ -354,21 +324,13 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AUNUEnv
         result["format_reflection_history"] = log.get("format_reflection_history", [])
         result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
         result["zero_shot_draft"] = log.get("zero_shot_draft", "")
-    if args.strategy == "hybrid_v2":
-        result["router_history"] = log.get("router_history", [])
-        result["user_interactions"] = log.get("user_interactions", [])
-        result["user_interactions_phase2"] = log.get("user_interactions_phase2", [])
-        result["data_interactions"] = log.get("data_interactions", [])
-        result["mid_synthesis"] = log.get("mid_synthesis", "")
-        result["format_reflection_history"] = log.get("format_reflection_history", [])
-        result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
     if args.strategy == "zero_shot_with_samples_reason" and log.get("modifications") is not None:
         result["modifications"] = log["modifications"]
     return result
 
 
-def _find_best_zero_shot_dir(dataset_name: str, aunu_model: str) -> str | None:
-    """Return the zero_shot ExperimentN dir with the largest N whose output.json matches aunu_model."""
+def _find_best_zero_shot_dir(dataset_name: str, area_model: str) -> str | None:
+    """Return the zero_shot ExperimentN dir with the largest N whose output.json matches area_model."""
     zero_shot_base = os.path.join(RESULTS_DIR, dataset_name.replace("/", "_"), "zero_shot")
     if not os.path.isdir(zero_shot_base):
         return None
@@ -386,7 +348,7 @@ def _find_best_zero_shot_dir(dataset_name: str, aunu_model: str) -> str | None:
         try:
             with open(output_path) as f:
                 data = json.load(f)
-            if data.get("args", {}).get("aunu_model") != aunu_model:
+            if data.get("args", {}).get("area_model") != area_model:
                 continue
         except Exception:
             continue
@@ -446,7 +408,7 @@ def _sum_costs(output: dict) -> float:
     return round(total, 6)
 
 
-def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str) -> dict:
+def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str) -> dict:
     """Run the benchmark for all requested personas and tasks.
 
     Saves incremental results to output.json after each task so progress is
@@ -470,7 +432,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             cache_gold_units=True,
             cache_path=_gt_cache_path,
         )
-    env = AUNUEnv(evaluator=evaluator, max_steps=cfg.max_steps, data_sampled_file=getattr(cfg, "data_sampled_file", "data_sampled_2.6.json"))
+    env = AREAEnv(evaluator=evaluator, max_steps=cfg.max_steps, data_sampled_file=getattr(cfg, "data_sampled_file", "data_sampled_2.6.json"))
 
     persona_config = {"user_mode": "persona"} if cfg.user_mode == "persona" else None
 
@@ -491,7 +453,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
         if not args.communication_habit:
             raise ValueError("--communication_habit (passive/neutral/active) is required with --use_v2")
         _habit_file = os.path.join(
-            _REPO_ROOT, "AUNUEnv", "aunu_env", "users", "prompts", "responser_habit.json"
+            _REPO_ROOT, "AREAEnv", "area_env", "users", "prompts", "responser_habit.json"
         )
         with open(_habit_file) as f:
             _all_habits = json.load(f)
@@ -525,8 +487,8 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
     else:
         output = {
             "args": {
-                "strategy_aunu": args.strategy,
-                "aunu_model": cfg.agent_model,
+                "strategy_area": args.strategy,
+                "area_model": cfg.agent_model,
                 "mimic_model": cfg.user_model,
                 "evaluator_model": cfg.evaluator_model,
                 "persona": args.persona,
@@ -584,12 +546,6 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
             if args.strategy == "zero_shot":
                 agent = ZeroShotAgent.from_config(cfg)
                 log = agent.run(env, task)
-            elif args.strategy == "zero_shot_with_data_analysis":
-                agent = ZeroShotWithDataAnalysisAgent.from_config(cfg, split=args.split)
-                log = agent.run(env, task)
-            elif args.strategy == "zero_shot_with_samples":
-                agent = ZeroShotWithSamplesAgent.from_config(cfg, split=args.split)
-                log = agent.run(env, task)
             elif args.strategy == "zero_shot_with_samples_reason":
                 seed_req = seed_requirements.get((task.persona_id, task_num))
                 turn_id = getattr(args, "turn_id", 1)
@@ -599,27 +555,6 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                     turn_id=turn_id,
                 )
                 log = agent.run(env, task)
-            elif args.strategy == "zero_shot_with_data_analysis_and_samples":
-                agent = ZeroShotWithDataAnalysisAndSamplesAgent.from_config(cfg, split=args.split)
-                log = agent.run(env, task)
-            elif args.strategy == "zero_shot_with_data_summary":
-                agent = ZeroShotWithDataSummaryAgent.from_config(cfg, split=args.split)
-                log = agent.run(env, task)
-            elif args.strategy == "data_interaction":
-                agent = DataInteractionAgent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task)
-            elif args.strategy == "data_interaction_v2":
-                agent = DataInteractionV2Agent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task)
-            elif args.strategy == "data_interaction_v3":
-                agent = DataInteractionV3Agent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task)
-            elif args.strategy == "data_interaction_v4":
-                agent = DataInteractionV4Agent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task)
-            elif args.strategy == "data_interaction_v5":
-                agent = DataInteractionV5Agent.from_config(cfg, max_turns=max_turns)
-                log = agent.run(env, task)
             elif args.strategy == "hybrid":
                 seed_req = seed_requirements.get((task.persona_id, task_num))
                 if seed_req is None:
@@ -627,11 +562,6 @@ def run_experiment(args: argparse.Namespace, cfg: "AUNUEnvConfig", exp_dir: str)
                     zs_log = ZeroShotAgent.from_config(cfg).run(env, task)
                     seed_req = zs_log.get("task_requirement_final")
                 agent = HybridAgent.from_config(cfg, max_iterations=max_iterations)
-                log = agent.run(env, task, user, initial_requirement=seed_req)
-            elif args.strategy == "hybrid_v2":
-                mid_turn = getattr(args, "mid_turn", 6)
-                agent = HybridV2Agent.from_config(cfg, max_iterations=max_iterations, mid_turn=mid_turn)
-                seed_req = seed_requirements.get((task.persona_id, task_num))
                 log = agent.run(env, task, user, initial_requirement=seed_req)
             else:
                 agent = UserInteractionAgent.from_config(cfg, max_turns=max_turns)

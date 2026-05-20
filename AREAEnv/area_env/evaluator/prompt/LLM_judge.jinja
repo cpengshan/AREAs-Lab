@@ -1,0 +1,167 @@
+You are an expert evaluator for AI-Assisted User Needs Understanding (AREA).
+
+Your task is to compare a predicted task requirement against a ground-truth task requirement by:
+1. decomposing both into atomic requirement units,
+2. aligning the units semantically,
+3. computing three scores:
+   - completeness & alignment
+   - faithfulness
+   - constraint preservation
+
+Your goal is to evaluate specification fidelity, not writing style.
+
+--------------------------------------------------
+INPUT
+
+[Predicted Requirement]
+{{ task_requirement_final }}
+
+[Ground Truth Requirement]
+{{ ground_truth }}
+
+--------------------------------------------------
+STEP 1: DECOMPOSE BOTH REQUIREMENTS
+
+Convert BOTH requirements into lists of atomic requirement units.
+
+Rules for decomposition:
+- Each unit must express exactly one objective, constraint, requirement, instruction, or evaluation criterion.
+- Split broad statements into smaller units when they contain multiple requirements.
+- Keep wording short, normalized, and precise.
+- Preserve the original meaning.
+- Do not invent requirements that are not explicitly supported by the text.
+
+Return:
+
+predicted_units = [
+  ...
+]
+
+ground_truth_units = [
+  ...
+]
+
+--------------------------------------------------
+STEP 2: ALIGN THE UNITS
+
+Match predicted units to ground-truth units based on semantic equivalence.
+
+Alignment rules:
+- A match means the predicted unit preserves the same intent as the ground-truth unit, even if phrased differently.
+- A single ground-truth unit may align with multiple predicted units if the original idea is decomposed or split across them.
+- If a predicted unit only partially matches a ground-truth unit but weakens, distorts, or misinterprets it, place it in misaligned_units instead of matched_pairs.
+- Any ground-truth unit not covered by prediction is missing.
+- Any predicted unit not supported by the ground truth is hallucinated.
+
+Return:
+
+matched_pairs = [
+  {
+    "predicted": "...",
+    "ground_truth": "..."
+  }
+]
+
+missing_units = [
+  ...
+]
+
+hallucinated_units = [
+  ...
+]
+
+misaligned_units = [
+  {
+    "predicted": "...",
+    "ground_truth": "...",
+    "reason": "..."
+  }
+]
+
+
+--------------------------------------------------
+STEP 3: COMPUTE SCORES
+
+Compute the following scores as floats between 0 and 1.
+
+1. completeness
+Definition:
+(number of correctly matched ground-truth units) / (total number of ground-truth units)
+
+2. alignment
+Definition:
+(number of correctly matched pairs) / (number of correctly matched pairs + number of misaligned units)
+
+If there are no matched_pairs and no misaligned_units, set alignment = 0.0.
+
+3. faithfulness
+Definition:
+1 - (number of hallucinated_units / total number of predicted_units)
+
+If total predicted_units = 0, set faithfulness = 0.0.
+
+If there are no critical units, set constraint_preservation = 0.0.
+
+--------------------------------------------------
+IMPORTANT EVALUATION RULES
+
+- Be strict.
+- Do not reward vague summaries when the ground truth is specific.
+- Ground truth is the only source of truth.
+- Do not assume omitted details are implied.
+- Focus on whether the predicted requirement faithfully recovers the task specification.
+
+--------------------------------------------------
+OUTPUT FORMAT
+
+Return ONLY valid JSON with this exact structure:
+
+{
+  "predicted_units": [
+    "..."
+  ],
+  "ground_truth_units": [
+    "..."
+  ],
+  "matched_pairs": [
+    {
+      "predicted": "...",
+      "ground_truth": "..."
+    }
+  ],
+  "missing_units": [
+    "..."
+  ],
+  "hallucinated_units": [
+    "..."
+  ],
+  "misaligned_units": [
+    {
+      "predicted": "...",
+      "ground_truth": "...",
+      "reason": "..."
+    }
+  ],
+  "critical_units": [
+    "..."
+  ],
+  "critical_missing": [
+    "..."
+  ],
+  "counts": {
+    "n_predicted_units": 0,
+    "n_ground_truth_units": 0,
+    "n_matched_pairs": 0,
+    "n_missing_units": 0,
+    "n_hallucinated_units": 0,
+    "n_misaligned_units": 0,
+    "n_critical_units": 0,
+    "n_critical_matched": 0
+  },
+  "scores": {
+    "completeness": 0.0,
+    "alignment": 0.0,
+    "faithfulness": 0.0,
+  },
+  "summary": "Brief explanation of the major differences, especially missing critical constraints, hallucinations, and misinterpretations."
+}

@@ -210,13 +210,13 @@ data/data_raw/
 
 # External reference codebases
 ReqElicitBench/
-AUNUEnv/data/data_raw/**
-AUNUEnv/data/data_processed/**
-AUNUEnv/data/data_sampled_2.3/**/*.json
-AUNUEnv/data/data_synthesized_2.3/**/*.json
-AUNUEnv/data/data_synthesized_0503/**/*.json
-# AUNUEnv/data/data_synthesized/**
-!AUNUEnv/data/**/.gitkeep
+AREAEnv/data/data_raw/**
+AREAEnv/data/data_processed/**
+AREAEnv/data/data_sampled_2.3/**/*.json
+AREAEnv/data/data_synthesized_2.3/**/*.json
+AREAEnv/data/data_synthesized_0503/**/*.json
+# AREAEnv/data/data_synthesized/**
+!AREAEnv/data/**/.gitkeep
 
 # Project-specific
 uv.lock
@@ -235,6 +235,10 @@ CLAUDE.md
 results
 agent/logs/
 agent/results/
+agent/results_old/
+agent/results_defining/
+"agent/results copy/"
+agent/results*/
 
 # Cache
 .llm_cache

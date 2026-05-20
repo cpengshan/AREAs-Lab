@@ -1,10 +1,10 @@
-"""Zero-shot agent for AUNUEnv.
+"""Zero-shot agent for AREAEnv.
 
 Generates a final task requirement from the elevator pitch alone — no
 interaction with the MIMIC user and no data inspection.
 
 LangGraph graph:
-  [aunu_agent] → END
+  [area_agent] → END
 
 The single node renders the zero_shot.jinja prompt, calls the LLM, and
 submits the result to the environment via env.step(finish(...)).
@@ -24,10 +24,10 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
         sys.path.insert(0, _p)
 
 from agent_state import AgentState, Message
-from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.env.actions import finish
-from AUNUEnv.aunu_env.utils.llm import call_llm
-from AUNUEnv.aunu_env.utils.jinja_utils import render_template
+from AREAEnv.area_env.config import AREAEnvConfig
+from AREAEnv.area_env.env.actions import finish
+from AREAEnv.area_env.utils.llm import call_llm
+from AREAEnv.area_env.utils.jinja_utils import render_template
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,13 @@ _ZERO_SHOT_TEMPLATE = os.path.join(_PROMPTS_DIR, "zero_shot.jinja")
 
 
 class ZeroShotAgent:
-    """LangGraph-based zero-shot agent that operates inside AUNUEnv.
+    """LangGraph-based zero-shot agent that operates inside AREAEnv.
 
     The agent does a single LLM call on the elevator pitch and submits the
     result as the final task requirement.
 
     Args:
-        model_name: LLM model identifier (must be in AUNUEnv's PRICING_DATA).
+        model_name: LLM model identifier (must be in AREAEnv's PRICING_DATA).
         temperature: Sampling temperature.
         max_tokens: Maximum output tokens.
     """
@@ -56,8 +56,8 @@ class ZeroShotAgent:
         self._env = None   # set before run()
 
     @classmethod
-    def from_config(cls, config: AUNUEnvConfig) -> "ZeroShotAgent":
-        """Construct a ZeroShotAgent from an AUNUEnvConfig."""
+    def from_config(cls, config: AREAEnvConfig) -> "ZeroShotAgent":
+        """Construct a ZeroShotAgent from an AREAEnvConfig."""
         return cls(
             model_name=config.agent_model,
             temperature=config.effective_agent_temperature,
@@ -66,8 +66,8 @@ class ZeroShotAgent:
 
     @classmethod
     def from_yaml(cls, yaml_path: str) -> "ZeroShotAgent":
-        """Construct a ZeroShotAgent by loading an AUNUEnvConfig YAML file."""
-        return cls.from_config(AUNUEnvConfig.from_yaml(yaml_path))
+        """Construct a ZeroShotAgent by loading an AREAEnvConfig YAML file."""
+        return cls.from_config(AREAEnvConfig.from_yaml(yaml_path))
 
     # ------------------------------------------------------------------
     # LangGraph node
@@ -97,7 +97,7 @@ class ZeroShotAgent:
         msg: Message = {
             "start_time": start_time,
             "end_time": end_time,
-            "role": "aunu_agent",
+            "role": "area_agent",
             "action": "zero_shot",
             "input": prompt,
             "prompt_template": "zero_shot.jinja",
@@ -123,23 +123,23 @@ class ZeroShotAgent:
     def build_graph(self):
         """Compile and return the LangGraph StateGraph."""
         workflow = StateGraph(AgentState)
-        workflow.add_node("aunu_agent", self.process)
-        workflow.set_entry_point("aunu_agent")
-        workflow.add_edge("aunu_agent", END)
+        workflow.add_node("area_agent", self.process)
+        workflow.set_entry_point("area_agent")
+        workflow.add_edge("area_agent", END)
         return workflow.compile()
 
     def run(self, env, task) -> dict:
         """Run a complete zero-shot episode and return the trajectory log.
 
         Args:
-            env: AUNUEnv instance (already initialised with evaluator).
+            env: AREAEnv instance (already initialised with evaluator).
             task: TaskInstance to solve.
 
         Returns:
             Trajectory log dict from env.get_trajectory_log().
         """
         # Reset env with a passive MimicUser (unused in zero-shot but required by API)
-        from AUNUEnv.aunu_env.users import MimicUser
+        from AREAEnv.area_env.users import MimicUser
         user = MimicUser(model_name=self.model_name)
         obs, _ = env.reset(task, user)
         self._env = env

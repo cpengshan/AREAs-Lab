@@ -1,13 +1,13 @@
-# AUNU — AI-Assisted User Needs Understanding
+# AREA — AI-Assisted User Needs Understanding
 
-AUNU is a research framework for benchmarking how LLM agents transform underspecified user requests into structured task requirement specifications. Agents interact with a simulated user and/or real dataset samples across three strategies, and are evaluated with an atomic-unit LLM-based scoring pipeline.
+AREA is a research framework for benchmarking how LLM agents transform underspecified user requests into structured task requirement specifications. Agents interact with a simulated user and/or real dataset samples across three strategies, and are evaluated with an atomic-unit LLM-based scoring pipeline.
 
 ---
 
 ## Repository Structure
 
 ```
-AUNU/
+AREA/
 ├── agent/                              # Agent layer (main entry point)
 │   ├── run_agent.py                    # CLI entry point for all strategies
 │   ├── zero_shot_agent.py              # Zero-shot strategy implementation
@@ -16,7 +16,7 @@ AUNU/
 │   ├── agent_state.py                  # LangGraph AgentState TypedDict
 │   ├── prompts/                        # Jinja2 prompt templates
 │   │   ├── agents/
-│   │   │   ├── aunu_agent/
+│   │   │   ├── area_agent/
 │   │   │   │   ├── zero_shot.jinja
 │   │   │   │   ├── user/               # user_interaction prompts
 │   │   │   │   ├── data/               # data_interaction prompts
@@ -39,13 +39,13 @@ AUNU/
 │           ├── user_interaction/Experiment<N>/
 │           └── data_interaction/Experiment<N>/
 │
-├── AUNUEnv/                            # Benchmark environment package
-│   ├── aunu_env/
-│   │   ├── config.py                   # AUNUEnvConfig dataclass
+├── AREAEnv/                            # Benchmark environment package
+│   ├── area_env/
+│   │   ├── config.py                   # AREAEnvConfig dataclass
 │   │   ├── configs/
 │   │   │   └── default.yaml            # Default model & env config (edit here)
 │   │   ├── env/
-│   │   │   ├── aunu_env.py             # Core gym-style environment
+│   │   │   ├── area_env.py             # Core gym-style environment
 │   │   │   ├── actions.py              # Action constructors & validation
 │   │   │   └── state.py                # EpisodeState dataclass
 │   │   ├── dataset/
@@ -68,7 +68,7 @@ AUNU/
 │   ├── scripts/
 │   │   ├── run_experiment.py           # Experiment runner CLI
 │   │   └── run_evaluation.py           # Standalone re-evaluator
-│   └── data/                           # AUNUEnv local data (gitignored)
+│   └── data/                           # AREAEnv local data (gitignored)
 │       ├── data_raw/                   # Sampled CSVs per dataset
 │       └── data_synthesized/           # synthesized_output.json per dataset
 │
@@ -92,9 +92,9 @@ AUNU/
 
 ## Architecture
 
-### Environment (`AUNUEnv`)
+### Environment (`AREAEnv`)
 
-`AUNUEnv` is a gym-style benchmark environment decoupled from any specific agent. It exposes a standard `reset() → step() → get_trajectory_log()` interface.
+`AREAEnv` is a gym-style benchmark environment decoupled from any specific agent. It exposes a standard `reset() → step() → get_trajectory_log()` interface.
 
 **Action space** (4 action types):
 
@@ -185,7 +185,7 @@ All agents are launched via `agent/run_agent.py` from the repo root. Models and 
 ```bash
 # Zero-shot — single LLM call, no interaction
 python agent/run_agent.py \
-  --config AUNUEnv/aunu_env/configs/default.yaml \
+  --config AREAEnv/area_env/configs/default.yaml \
   --strategy zero_shot \
   --agent_model gpt-4.1 \
   --dataset alexfabbri/multi_news \
@@ -193,7 +193,7 @@ python agent/run_agent.py \
 
 # User interaction — clarify via MIMIC user, then synthesize
 python agent/run_agent.py \
-  --config AUNUEnv/aunu_env/configs/default.yaml \
+  --config AREAEnv/area_env/configs/default.yaml \
   --strategy user_interaction \
   --agent_model gpt-4.1 \
   --mimic_model gpt-4.1-mini \
@@ -205,7 +205,7 @@ python agent/run_agent.py \
 
 # Data interaction — inspect dataset samples, reflect, rewrite
 python agent/run_agent.py \
-  --config AUNUEnv/aunu_env/configs/default.yaml \
+  --config AREAEnv/area_env/configs/default.yaml \
   --strategy data_interaction \
   --agent_model gpt-4.1 \
   --evaluator_model gpt-4.1 \
@@ -218,12 +218,12 @@ python agent/run_agent.py \
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `--config` | none | Path to `AUNUEnvConfig` YAML. Models, temperatures, `max_steps`, and `user_mode` are read from here; CLI flags override individual fields. |
+| `--config` | none | Path to `AREAEnvConfig` YAML. Models, temperatures, `max_steps`, and `user_mode` are read from here; CLI flags override individual fields. |
 | `--strategy` | `zero_shot` | `zero_shot` \| `user_interaction` \| `data_interaction` |
-| `--agent_model` | from config | LLM for the AUNU agent (overrides config) |
+| `--agent_model` | from config | LLM for the AREA agent (overrides config) |
 | `--mimic_model` | from config `user_model` | LLM for the MIMIC user (overrides config) |
 | `--evaluator_model` | from config | LLM for the atomic evaluator (overrides config) |
-| `--dataset` | from config | HuggingFace dataset id — must have a matching folder under `AUNUEnv/data/data_synthesized/` |
+| `--dataset` | from config | HuggingFace dataset id — must have a matching folder under `AREAEnv/data/data_synthesized/` |
 | `--persona` | **required** | Space-separated persona IDs to run (e.g. `--persona 1 2 3`) |
 | `--input_type` | `elevator_pitch_summary` | `elevator_pitch_summary` \| `deep_dive_summary` |
 | `--max_turns` | `5` | Max clarification rounds (`user_interaction`) or data-inspection cycles (`data_interaction`) |
@@ -235,7 +235,7 @@ python agent/run_agent.py \
 
 ### Supported Models
 
-Model provider is inferred automatically from the model name prefix. Models not listed in the pricing table in `AUNUEnv/aunu_env/utils/llm.py` will still run but cost will be reported as `0.0`.
+Model provider is inferred automatically from the model name prefix. Models not listed in the pricing table in `AREAEnv/area_env/utils/llm.py` will still run but cost will be reported as `0.0`.
 
 | Prefix | Provider | Example models |
 |--------|----------|----------------|
@@ -243,7 +243,7 @@ Model provider is inferred automatically from the model name prefix. Models not 
 | `gemini` | Google | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` |
 | `claude` | Anthropic | `claude-opus-4-7`, `claude-haiku-4-5-20251001` |
 
-To add a new model, insert an entry in `PRICING_DATA` in [AUNUEnv/aunu_env/utils/llm.py](AUNUEnv/aunu_env/utils/llm.py).
+To add a new model, insert an entry in `PRICING_DATA` in [AREAEnv/area_env/utils/llm.py](AREAEnv/area_env/utils/llm.py).
 
 ### SLURM Batch Jobs
 

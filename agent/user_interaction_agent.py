@@ -1,10 +1,10 @@
-"""User-interaction agent for AUNUEnv.
+"""User-interaction agent for AREAEnv.
 
 Clarifies task requirements through iterative dialogue with the MIMIC user
-(hosted inside AUNUEnv), then synthesizes a final requirement.
+(hosted inside AREAEnv), then synthesizes a final requirement.
 
 LangGraph graph:
-  [aunu_agent] ──(continue)──▶ [aunu_agent]
+  [area_agent] ──(continue)──▶ [area_agent]
                ──(end)──▶ END
 
 The single self-looping node manages the full state machine:
@@ -33,11 +33,11 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
         sys.path.insert(0, _p)
 
 from agent_state import AgentState, Message
-from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.env.actions import ask_user, finish
-from AUNUEnv.aunu_env.utils.llm import call_llm
-from AUNUEnv.aunu_env.utils.jinja_utils import render_template
-from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
+from AREAEnv.area_env.config import AREAEnvConfig
+from AREAEnv.area_env.env.actions import ask_user, finish
+from AREAEnv.area_env.utils.llm import call_llm
+from AREAEnv.area_env.utils.jinja_utils import render_template
+from AREAEnv.area_env.utils.json_utils import parse_json_output
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def _build_chat_history(interaction_history: list) -> list:
 
 
 class UserInteractionAgent:
-    """LangGraph-based user-interaction agent that operates inside AUNUEnv.
+    """LangGraph-based user-interaction agent that operates inside AREAEnv.
 
     The agent first produces a zero-shot draft, then runs up to `max_turns`
     clarification rounds with the MIMIC user via the env's ask_user action,
@@ -89,8 +89,8 @@ class UserInteractionAgent:
         self._env = None  # set before run()
 
     @classmethod
-    def from_config(cls, config: AUNUEnvConfig, max_turns: int = 5) -> "UserInteractionAgent":
-        """Construct a UserInteractionAgent from an AUNUEnvConfig."""
+    def from_config(cls, config: AREAEnvConfig, max_turns: int = 5) -> "UserInteractionAgent":
+        """Construct a UserInteractionAgent from an AREAEnvConfig."""
         return cls(
             model_name=config.agent_model,
             max_turns=max_turns,
@@ -100,8 +100,8 @@ class UserInteractionAgent:
 
     @classmethod
     def from_yaml(cls, yaml_path: str, max_turns: int = 5) -> "UserInteractionAgent":
-        """Construct a UserInteractionAgent by loading an AUNUEnvConfig YAML file."""
-        config = AUNUEnvConfig.from_yaml(yaml_path)
+        """Construct a UserInteractionAgent by loading an AREAEnvConfig YAML file."""
+        config = AREAEnvConfig.from_yaml(yaml_path)
         return cls.from_config(config, max_turns=max_turns)
 
     # ------------------------------------------------------------------
@@ -128,7 +128,7 @@ class UserInteractionAgent:
             logger.info(f"[UserInteraction] Zero-shot draft ({len(draft)} chars)")
 
             messages.append(_make_msg(
-                start, end, "aunu_agent", "zero_shot_draft",
+                start, end, "area_agent", "zero_shot_draft",
                 prompt, "zero_shot.jinja", "", draft,
                 self.model_name, result,
             ))
@@ -169,7 +169,7 @@ class UserInteractionAgent:
             user_response = obs.get("last_response", "")
 
             messages.append(_make_msg(
-                start, end, "aunu_agent", "ask_user",
+                start, end, "area_agent", "ask_user",
                 prompt, "user/user_interaction.jinja", ambiguity, question,
                 self.model_name, result,
             ))
@@ -238,7 +238,7 @@ class UserInteractionAgent:
         env.step(finish(final_req))
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "finish",
+            start, end, "area_agent", "finish",
             prompt, "user/task_requirement_prediction.jinja", "", final_req,
             self.model_name, result,
         ))
@@ -268,12 +268,12 @@ class UserInteractionAgent:
     def build_graph(self):
         """Compile and return the LangGraph StateGraph."""
         workflow = StateGraph(AgentState)
-        workflow.add_node("aunu_agent", self.process)
-        workflow.set_entry_point("aunu_agent")
+        workflow.add_node("area_agent", self.process)
+        workflow.set_entry_point("area_agent")
         workflow.add_conditional_edges(
-            "aunu_agent",
+            "area_agent",
             self._router,
-            {"continue": "aunu_agent", "end": END},
+            {"continue": "area_agent", "end": END},
         )
         return workflow.compile()
 
@@ -281,7 +281,7 @@ class UserInteractionAgent:
         """Run a complete user-interaction episode and return the trajectory log.
 
         Args:
-            env: AUNUEnv instance (already initialised with evaluator).
+            env: AREAEnv instance (already initialised with evaluator).
             task: TaskInstance to solve.
             user: MimicUser instance (passive or persona-conditioned).
 

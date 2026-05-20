@@ -1,7 +1,7 @@
-"""LangGraph state definition for AUNUEnv-based agents.
+"""LangGraph state definition for AREAEnv-based agents.
 
 Extends agent_basic.InteractionState to include env-level tracking fields
-that map to AUNUEnv's trajectory log format.
+that map to AREAEnv's trajectory log format.
 """
 
 from typing import TypedDict, Annotated, Sequence
@@ -12,7 +12,7 @@ class Message(TypedDict):
     """A single logged message in the agent trajectory."""
     start_time: str
     end_time: str
-    role: str              # "aunu_agent" | "mimic_user"
+    role: str              # "area_agent" | "mimic_user"
     action: str            # "zero_shot" | "ask_user" | "propose_update" | "finish"
     input: str             # rendered prompt
     prompt_template: str

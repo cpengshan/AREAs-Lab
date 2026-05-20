@@ -1,4 +1,4 @@
-"""Hybrid agent for AUNUEnv.
+"""Hybrid agent for AREAEnv.
 
 Adaptive routing workflow that decides at each iteration whether to perform
 data interaction, user interaction, or reflection synthesis (final step).
@@ -29,11 +29,11 @@ for _p in (_REPO_ROOT, _AGENT_DIR):
         sys.path.insert(0, _p)
 
 from agent_state import Message
-from AUNUEnv.aunu_env.config import AUNUEnvConfig
-from AUNUEnv.aunu_env.env.actions import inspect_data, ask_user, finish
-from AUNUEnv.aunu_env.utils.llm import call_llm
-from AUNUEnv.aunu_env.utils.jinja_utils import render_template
-from AUNUEnv.aunu_env.utils.json_utils import parse_json_output
+from AREAEnv.area_env.config import AREAEnvConfig
+from AREAEnv.area_env.env.actions import inspect_data, ask_user, finish
+from AREAEnv.area_env.utils.llm import call_llm
+from AREAEnv.area_env.utils.jinja_utils import render_template
+from AREAEnv.area_env.utils.json_utils import parse_json_output
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class HybridState(TypedDict, total=False):
 
 
 class HybridAgent:
-    """Adaptive hybrid agent combining data and user interaction inside AUNUEnv.
+    """Adaptive hybrid agent combining data and user interaction inside AREAEnv.
 
     At each iteration a Router LLM chooses one of:
     - "data_interaction": sample data, execute, reflect, update requirement.
@@ -110,7 +110,7 @@ class HybridAgent:
         self._env = None
 
     @classmethod
-    def from_config(cls, config: AUNUEnvConfig, max_iterations: int = 6) -> "HybridAgent":
+    def from_config(cls, config: AREAEnvConfig, max_iterations: int = 6) -> "HybridAgent":
         return cls(
             model_name=config.agent_model,
             max_iterations=max_iterations,
@@ -120,7 +120,7 @@ class HybridAgent:
 
     @classmethod
     def from_yaml(cls, yaml_path: str, max_iterations: int = 6) -> "HybridAgent":
-        return cls.from_config(AUNUEnvConfig.from_yaml(yaml_path), max_iterations=max_iterations)
+        return cls.from_config(AREAEnvConfig.from_yaml(yaml_path), max_iterations=max_iterations)
 
     # ------------------------------------------------------------------
     # LangGraph nodes
@@ -138,7 +138,7 @@ class HybridAgent:
         logger.info(f"[Hybrid] Zero-shot draft ({len(draft)} chars)")
 
         messages = [_make_msg(
-            start, end, "aunu_agent", "zero_shot_draft",
+            start, end, "area_agent", "zero_shot_draft",
             prompt, "zero_shot.jinja", "", draft, self.model_name, result,
         )]
         return {
@@ -197,7 +197,7 @@ class HybridAgent:
         logger.info(f"[Hybrid] Turn {turn}: router → {action} | {reason}")
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "router",
+            start, end, "area_agent", "router",
             prompt, "hybrid/hybrid_router_v2.jinja", target_gap, result["output"],
             self.model_name, result,
         ))
@@ -239,7 +239,7 @@ class HybridAgent:
                           max_tokens=4096, temperature=self.temperature)
         end = datetime.now(timezone.utc).isoformat()
         messages.append(_make_msg(
-            start, end, "aunu_agent", "guideline_update",
+            start, end, "area_agent", "guideline_update",
             prompt, "hybrid/hybrid_guideline_update.jinja",
             "", result["output"], self.model_name, result,
         ))
@@ -278,7 +278,7 @@ class HybridAgent:
         logger.info(f"[Hybrid] Data turn {turn}: observations ({len(observation)} chars)")
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "data_observation",
+            start, end, "area_agent", "data_observation",
             prompt, "hybrid/hybrid_data_observation.jinja",
             "", observation, self.model_name, result,
         ))
@@ -333,7 +333,7 @@ class HybridAgent:
         logger.info(f"[Hybrid] User turn {turn}: {question[:80]}")
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "ask_user",
+            start, end, "area_agent", "ask_user",
             prompt, "user/user_interaction.jinja", ambiguity, question,
             self.model_name, result,
         ))
@@ -413,7 +413,7 @@ class HybridAgent:
         env.step(finish(final_req))
 
         messages.append(_make_msg(
-            start, end, "aunu_agent", "finish",
+            start, end, "area_agent", "finish",
             prompt, "hybrid/hybrid_synthesis.jinja", "", final_req,
             self.model_name, result,
         ))
@@ -470,7 +470,7 @@ class HybridAgent:
         """Run a complete hybrid episode and return the trajectory log.
 
         Args:
-            env: AUNUEnv instance (already initialised with evaluator).
+            env: AREAEnv instance (already initialised with evaluator).
             task: TaskInstance to solve.
             user: MimicUser instance (passive or persona-conditioned).
             initial_requirement: Optional pre-seeded task requirement to use as the

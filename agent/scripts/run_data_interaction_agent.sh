@@ -1,17 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=gem_data
-#SBATCH --output=/local/scratch/zzh2365/AREA/agent/logs/zero_shot_with_samples_reason/output.log
-#SBATCH --mem=2GB
-#SBATCH --partition=feih100
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=zzh2365@emory.edu
 
-REPO_ROOT="/local/scratch/zzh2365/AREA"
+REPO_ROOT="Enter the repository root path"
 
 CONFIG="${REPO_ROOT}/AREAEnv/area_env/configs/default.yaml"
 INPUT_TYPE="elevator_pitch_summary"                # elevator_pitch_summary | deep_dive_summary
 MAX_STEPS=5
-OUTPUT_DIR="${REPO_ROOT}/results/zero_shot_with_samples_reason"
+OUTPUT_DIR="${REPO_ROOT}/results/data_interaction"
 AGENT_MODEL="gemini-3.1-pro-preview"                       # "gpt-5.4" | "claude-sonnet-4-6" | "gemini-3.1-pro-preview"
 AGENT_MODEL_TEMPERATURE=0.4
 SPLIT="non_defining_instances"                         # defining_instances | non_defining_instances | all
@@ -38,13 +32,13 @@ DATASETS=(
     "${REPO_ROOT}/AREAEnv/data/data_synthesized/Harley-ml/lesswrong:Harley-ml/lesswrong"
 )
 
-LOG_DIR="${REPO_ROOT}/agent/logs/zero_shot_with_samples_reason"
+LOG_DIR="${REPO_ROOT}/agent/logs/data_interaction"
 mkdir -p "$LOG_DIR"
 if [ -n "$1" ]; then
   EXP_ID="$1"
   RESUME_FLAG="--exp_id $EXP_ID"
   LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-  echo "Resuming zero_shot_with_samples_reason Experiment${EXP_ID} (skipping already-done tasks)..."
+  echo "Resuming data_interaction Experiment${EXP_ID} (skipping already-done tasks)..."
 else
   EXP_ID=1
   while [ -f "${LOG_DIR}/experiment${EXP_ID}.log" ]; do
@@ -52,7 +46,7 @@ else
   done
   RESUME_FLAG=""
   LOG_FILE="${LOG_DIR}/experiment${EXP_ID}.log"
-  echo "Running zero_shot_with_samples_reason Experiment${EXP_ID} across all datasets..."
+  echo "Running data_interaction Experiment${EXP_ID} across all datasets..."
 fi
 
 for ENTRY in "${DATASETS[@]}"; do
@@ -83,7 +77,7 @@ PYEOF
 
   python3 "${REPO_ROOT}/agent/run_agent.py" \
     --config "$CONFIG" \
-    --strategy zero_shot_with_samples_reason \
+    --strategy data_interaction \
     --dataset "$DATASET" \
     --persona $PERSONAS \
     --input_type "$INPUT_TYPE" \
@@ -92,7 +86,7 @@ PYEOF
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
-    --no_eval \
+    \
     $RESUME_FLAG
 
 done

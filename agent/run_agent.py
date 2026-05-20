@@ -66,7 +66,7 @@ from AREAEnv.area_env.users.mimic_user_v2 import MimicUserV2
 from zero_shot_agent import ZeroShotAgent
 from user_interaction_agent import UserInteractionAgent
 from hybrid_agent import HybridAgent
-from zero_shot_variants_agent import ZeroShotWithSamplesReasonAgent
+from zero_shot_variants_agent import DataInteractionAgent
 
 RESULTS_DIR = os.path.join(_AGENT_DIR, "results")
 DATA_SYNTHESIZED_DIR = os.path.join(_REPO_ROOT, "AREAEnv/data/data_synthesized")
@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument(
         "--strategy",
         choices=[
-            "zero_shot", "zero_shot_with_samples_reason",
+            "zero_shot", "data_interaction",
             "user_interaction", "hybrid",
         ],
         default="zero_shot",
@@ -164,7 +164,7 @@ def parse_args():
     parser.add_argument(
         "--turn_id", type=int, default=1,
         help="Round number for multi-round pipelines (e.g. data_multi_rounds). "
-             "Passed to zero_shot_with_samples_reason so the prompt knows which iteration this is.",
+             "Passed to data_interaction so the prompt knows which iteration this is.",
     )
     return parser.parse_args()
 
@@ -324,7 +324,7 @@ def _format_task_result(log: dict, task, args: argparse.Namespace, cfg: "AREAEnv
         result["format_reflection_history"] = log.get("format_reflection_history", [])
         result["elevator_pitch"] = getattr(task, "elevator_pitch", "")
         result["zero_shot_draft"] = log.get("zero_shot_draft", "")
-    if args.strategy == "zero_shot_with_samples_reason" and log.get("modifications") is not None:
+    if args.strategy == "data_interaction" and log.get("modifications") is not None:
         result["modifications"] = log["modifications"]
     return result
 
@@ -546,10 +546,10 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
             if args.strategy == "zero_shot":
                 agent = ZeroShotAgent.from_config(cfg)
                 log = agent.run(env, task)
-            elif args.strategy == "zero_shot_with_samples_reason":
+            elif args.strategy == "data_interaction":
                 seed_req = seed_requirements.get((task.persona_id, task_num))
                 turn_id = getattr(args, "turn_id", 1)
-                agent = ZeroShotWithSamplesReasonAgent.from_config(
+                agent = DataInteractionAgent.from_config(
                     cfg, split=args.split,
                     initial_requirement=seed_req,
                     turn_id=turn_id,

@@ -221,12 +221,12 @@ class _BaseZeroShotVariantAgent:
 # Variant: Zero-shot + Sampled Data + Modifications (reason)
 # ---------------------------------------------------------------------------
 
-class ZeroShotWithSamplesReasonAgent(_BaseZeroShotVariantAgent):
+class DataInteractionAgent(_BaseZeroShotVariantAgent):
     """Like ZeroShotWithSamplesAgent but uses a prompt that outputs JSON with
     ``final_task_requirement`` and a ``Modifications`` list explaining each change."""
 
-    _TEMPLATE_NAME = "zero_shot_with_samples_reason.jinja"
-    _ACTION_NAME = "zero_shot_with_samples_reason"
+    _TEMPLATE_NAME = "data_interaction.jinja"
+    _ACTION_NAME = "data_interaction"
 
     def __init__(self, *args, initial_requirement: str | None = None, turn_id: int = 1, **kwargs):
         super().__init__(*args, **kwargs)

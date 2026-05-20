@@ -4,10 +4,9 @@ Actions are represented as plain Python dicts for flexibility and easy JSON
 serialization.  Each action dict must have a "type" key.
 
 Supported action types:
-  ask_user                  — send a question to the MIMIC user
-  inspect_data              — sample rows from the task dataset for analysis
-  propose_requirement_update — update the current draft task requirement
-  finish                    — submit the final requirement and end the episode
+  ask_user     — send a question to the MIMIC user
+  inspect_data — sample rows from the task dataset for analysis
+  finish       — submit the final requirement and end the episode
 """
 
 from typing import Any
@@ -19,13 +18,11 @@ from typing import Any
 
 ACTION_ASK_USER = "ask_user"
 ACTION_INSPECT_DATA = "inspect_data"
-ACTION_PROPOSE_UPDATE = "propose_requirement_update"
 ACTION_FINISH = "finish"
 
 VALID_ACTION_TYPES = {
     ACTION_ASK_USER,
     ACTION_INSPECT_DATA,
-    ACTION_PROPOSE_UPDATE,
     ACTION_FINISH,
 }
 
@@ -58,15 +55,6 @@ def inspect_data(n_samples: int = 3, query: str = "", split: str = "all") -> dic
     if split not in VALID_SPLITS:
         raise ValueError(f"split must be one of {sorted(VALID_SPLITS)}, got '{split}'")
     return {"type": ACTION_INSPECT_DATA, "n_samples": n_samples, "query": query, "split": split}
-
-
-def propose_requirement_update(updated_requirement: str) -> dict:
-    """Create a propose_requirement_update action.
-
-    Args:
-        updated_requirement: The revised draft task requirement.
-    """
-    return {"type": ACTION_PROPOSE_UPDATE, "updated_requirement": updated_requirement}
 
 
 def finish(final_requirement: str) -> dict:
@@ -105,7 +93,5 @@ def validate_action(action: Any) -> None:
         split = action.get("split", "all")
         if split not in VALID_SPLITS:
             raise ValueError(f"inspect_data 'split' must be one of {sorted(VALID_SPLITS)}, got '{split}'")
-    if action_type == ACTION_PROPOSE_UPDATE and "updated_requirement" not in action:
-        raise ValueError("propose_requirement_update action requires 'updated_requirement'")
     if action_type == ACTION_FINISH and "final_requirement" not in action:
         raise ValueError("finish action requires 'final_requirement'")

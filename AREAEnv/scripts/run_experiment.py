@@ -85,9 +85,16 @@ def run_experiment(config: AREAEnvConfig, policy_factory: Callable) -> dict:
         data_synthesized_root=config.data_synthesized_root,
         synthesized_output_file=config.synthesized_output_file,
     )
+    _habit_file = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "area_env", "users", "prompts", "responser_habit.json",
+    )
+    with open(_habit_file) as _f:
+        _all_habits = json.load(_f)
+    _habit_name = getattr(config, "communication_habit", "neutral")
     user = MimicUser(
         model_name=config.user_model,
-        persona_config=config.persona_config if config.user_mode == "persona" else None,
+        habit=_all_habits[_habit_name],
         temperature=config.effective_user_temperature,
     )
     _cache_path = None

@@ -28,7 +28,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from area_env.env.actions import ask_user, inspect_data, propose_requirement_update, finish
+from area_env.env.actions import ask_user, inspect_data, finish
 from area_env.utils.llm import call_llm
 from area_env.utils.jinja_utils import render_template
 from area_env.utils.json_utils import parse_json_output
@@ -87,7 +87,7 @@ class UserOnlyPolicy:
     """Clarify requirements via the MIMIC user, then synthesize a final requirement.
 
     Flow:
-      1. Zero-shot draft → propose_requirement_update
+      1. Zero-shot draft (held in memory)
       2. Loop: ask_user (up to max_turns)
       3. Synthesize → finish
 
@@ -113,7 +113,6 @@ class UserOnlyPolicy:
         result = call_llm(self.model_name, prompt, max_tokens=self.max_tokens,
                           temperature=self.temperature)
         zero_shot_draft = result["output"]
-        obs, _, done, _ = env.step(propose_requirement_update(zero_shot_draft))
 
         # Step 2: user interaction loop
         for turn in range(1, self.max_turns + 1):
@@ -156,8 +155,8 @@ class DataOnlyPolicy:
     """Inspect dataset samples and iteratively rewrite the task requirement.
 
     Flow:
-      1. Zero-shot draft → propose_requirement_update
-      2. Loop (max_iterations): inspect_data → execute/reflect/rewrite → propose_requirement_update
+      1. Zero-shot draft (held in memory)
+      2. Loop (max_iterations): inspect_data → execute/reflect/rewrite
       3. finish
 
     Args:
@@ -184,8 +183,7 @@ class DataOnlyPolicy:
         result = call_llm(self.model_name, prompt, max_tokens=self.max_tokens,
                           temperature=self.temperature)
         current_req = result["output"]
-        obs, _, done, _ = env.step(propose_requirement_update(current_req))
-
+        done = False
         previous_reflections = []
 
         # Step 2: data inspection + rewrite loop
@@ -235,7 +233,6 @@ class DataOnlyPolicy:
             )
             r = call_llm(self.model_name, p, max_tokens=self.max_tokens, temperature=self.temperature)
             current_req = r["output"]
-            obs, _, done, _ = env.step(propose_requirement_update(current_req))
 
         # Step 3: finish
         env.step(finish(current_req))

@@ -15,7 +15,6 @@ class EpisodeState:
         draft_requirement: The agent's current draft task requirement.
         interaction_history: List of user-agent exchange dicts.
         data_inspections: List of data inspection result dicts.
-        requirement_updates: List of requirement update dicts.
         step_count: Number of steps taken so far.
         is_done: Whether the episode has ended.
         trajectory: Full ordered log of every step taken.
@@ -25,7 +24,6 @@ class EpisodeState:
     draft_requirement: str = ""
     interaction_history: list = field(default_factory=list)
     data_inspections: list = field(default_factory=list)
-    requirement_updates: list = field(default_factory=list)
     step_count: int = 0
     is_done: bool = False
     trajectory: list = field(default_factory=list)

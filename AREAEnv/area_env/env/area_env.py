@@ -13,7 +13,6 @@ The environment owns all dataset access. Agents interact using identifiers only:
 Action space (dict-based):
   ask_user(question)
   inspect_data(n_samples, query)
-  propose_requirement_update(updated_requirement)
   finish(final_requirement)
 """
 
@@ -34,8 +33,7 @@ from ..dataset.loader import DatasetRegistry
 from ..users import MimicUser
 from ..evaluator.atomic_evaluator import AtomicEvaluator
 from .actions import (
-    ACTION_ASK_USER, ACTION_INSPECT_DATA,
-    ACTION_PROPOSE_UPDATE, ACTION_FINISH,
+    ACTION_ASK_USER, ACTION_INSPECT_DATA, ACTION_FINISH,
     validate_action,
 )
 from .state import EpisodeState
@@ -135,9 +133,6 @@ class AREAEnv:
 
         elif action_type == ACTION_INSPECT_DATA:
             response_text, cost, step_info = self._handle_inspect_data(action)
-
-        elif action_type == ACTION_PROPOSE_UPDATE:
-            response_text, cost, step_info = self._handle_propose_update(action)
 
         elif action_type == ACTION_FINISH:
             response_text, cost, step_info = self._handle_finish(action)
@@ -307,16 +302,6 @@ class AREAEnv:
         s.data_inspections.append(inspection)
 
         return summary, 0.0, {"data_samples": samples, "split": split}
-
-    def _handle_propose_update(self, action: dict) -> tuple[str, float, dict]:
-        s = self._state
-        s.draft_requirement = action["updated_requirement"]
-        s.requirement_updates.append({
-            "step": s.step_count + 1,
-            "requirement": s.draft_requirement,
-        })
-        response = "Draft requirement updated."
-        return response, 0.0, {}
 
     def _handle_finish(self, action: dict) -> tuple[str, float, dict]:
         s = self._state

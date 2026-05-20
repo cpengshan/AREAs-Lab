@@ -14,7 +14,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from area_env.env.area_env import AREAEnv
-from area_env.env.actions import finish, propose_requirement_update, ask_user
+from area_env.env.actions import finish, ask_user
 from area_env.users import MimicUser
 from area_env.evaluator.atomic_evaluator import AtomicEvaluator
 from area_env.dataset.loader import DatasetRegistry
@@ -52,10 +52,10 @@ class StubEvaluator(AtomicEvaluator):
 class StubUser(MimicUser):
     def __init__(self):
         self.model_name = "stub"
-        self.persona_config = None
+        self.habit = {}
+        self.persona_config = {"mode": "v2"}
         self.temperature = 0.0
         self.max_tokens = 0
-        self._mode = "passive"
 
     def respond(self, task, chat_history, agent_message):
         return {"thought": "Seems reasonable.", "response": "Yes, that sounds right.", "cost": 0.0, "raw": {}}
@@ -74,21 +74,15 @@ class SimpleUserPolicy:
         print(f"  Task: {info['task_id']}")
         print(f"  User request: {obs['user_request']}")
 
-        # Step 1: propose an initial draft
-        obs, _, done, _ = env.step(propose_requirement_update(
-            "### 1. Strategic Intent\nSummarize weekly sales data..."
-        ))
-        print(f"  Step 1 — propose_requirement_update: draft set")
-
-        # Step 2: ask user a clarifying question
+        # Step 1: ask user a clarifying question
         obs, _, done, _ = env.step(ask_user("Should the summary include revenue trends?"))
-        print(f"  Step 2 — ask_user → '{obs['last_response']}'")
+        print(f"  Step 1 — ask_user → '{obs['last_response']}'")
 
-        # Step 3: finish with refined requirement
+        # Step 2: finish with refined requirement
         obs, reward, done, _ = env.step(finish(
             "### 1. Strategic Intent\nSummarize weekly sales data with revenue trends..."
         ))
-        print(f"  Step 3 — finish: reward={reward:.3f}")
+        print(f"  Step 2 — finish: reward={reward:.3f}")
 
         return env.get_trajectory_log()
 

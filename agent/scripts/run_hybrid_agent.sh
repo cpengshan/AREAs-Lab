@@ -59,7 +59,6 @@ for DATASET in "${DATASETS[@]}"; do
     --output_dir "$OUTPUT_DIR" \
     --agent_model "$AGENT_MODEL" \
     --log_file_path "$LOG_FILE" \
-    --use_v2 \
     --communication_habit active \
     $RESUME_FLAG
 

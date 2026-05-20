@@ -56,20 +56,18 @@ class ZeroShotPolicy:
     Single LLM call → finish.
 
     Args:
-        user: MimicUser instance (not called, required by runner interface).
         model_name: LLM model for generation.
         temperature: Sampling temperature.
         max_tokens: Max output tokens.
     """
 
-    def __init__(self, user, model_name: str, temperature: float = 0.0, max_tokens: int = 4096):
-        self.user = user
+    def __init__(self, model_name: str, temperature: float = 0.0, max_tokens: int = 4096):
         self.model_name = model_name
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def run(self, env, task) -> dict:
-        obs, _ = env.reset(task, self.user)
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
+        obs, _ = env.reset(dataset_name, persona_id, task_id)
 
         prompt = render_template(_ZERO_SHOT_TEMPLATE, user_instruction=obs["user_request"])
         result = call_llm(self.model_name, prompt, max_tokens=self.max_tokens,
@@ -94,23 +92,21 @@ class UserOnlyPolicy:
       3. Synthesize → finish
 
     Args:
-        user: MimicUser instance.
         model_name: LLM model for all generation steps.
         max_turns: Maximum user clarification rounds.
         temperature: Sampling temperature.
         max_tokens: Max output tokens.
     """
 
-    def __init__(self, user, model_name: str, max_turns: int = 5,
+    def __init__(self, model_name: str, max_turns: int = 5,
                  temperature: float = 0.0, max_tokens: int = 4096):
-        self.user = user
         self.model_name = model_name
         self.max_turns = max_turns
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def run(self, env, task) -> dict:
-        obs, _ = env.reset(task, self.user)
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
+        obs, _ = env.reset(dataset_name, persona_id, task_id)
 
         # Step 1: zero-shot draft
         prompt = render_template(_ZERO_SHOT_TEMPLATE, user_instruction=obs["user_request"])
@@ -165,7 +161,6 @@ class DataOnlyPolicy:
       3. finish
 
     Args:
-        user: MimicUser instance (not called, required by runner interface).
         model_name: LLM model for all generation steps.
         max_iterations: Number of data inspection + rewrite cycles.
         n_samples: Rows to sample per inspect_data action.
@@ -173,17 +168,16 @@ class DataOnlyPolicy:
         max_tokens: Max output tokens.
     """
 
-    def __init__(self, user, model_name: str, max_iterations: int = 3, n_samples: int = 3,
+    def __init__(self, model_name: str, max_iterations: int = 3, n_samples: int = 3,
                  temperature: float = 0.0, max_tokens: int = 4096):
-        self.user = user
         self.model_name = model_name
         self.max_iterations = max_iterations
         self.n_samples = n_samples
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-    def run(self, env, task) -> dict:
-        obs, _ = env.reset(task, self.user)
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
+        obs, _ = env.reset(dataset_name, persona_id, task_id)
 
         # Step 1: zero-shot draft
         prompt = render_template(_ZERO_SHOT_TEMPLATE, user_instruction=obs["user_request"])
@@ -252,17 +246,17 @@ class DataOnlyPolicy:
 # Factory functions for use with run_experiment.py --policy_module
 # ---------------------------------------------------------------------------
 
-def zero_shot_factory(user, model_name: str = "gpt-4.1", **kwargs):
-    return ZeroShotPolicy(user, model_name=model_name, **kwargs)
+def zero_shot_factory(model_name: str = "gpt-4.1", **kwargs):
+    return ZeroShotPolicy(model_name=model_name, **kwargs)
 
 
-def user_only_factory(user, model_name: str = "gpt-4.1", max_turns: int = 5, **kwargs):
-    return UserOnlyPolicy(user, model_name=model_name, max_turns=max_turns, **kwargs)
+def user_only_factory(model_name: str = "gpt-4.1", max_turns: int = 5, **kwargs):
+    return UserOnlyPolicy(model_name=model_name, max_turns=max_turns, **kwargs)
 
 
-def data_only_factory(user, model_name: str = "gpt-4.1", max_iterations: int = 3,
+def data_only_factory(model_name: str = "gpt-4.1", max_iterations: int = 3,
                       n_samples: int = 3, **kwargs):
-    return DataOnlyPolicy(user, model_name=model_name, max_iterations=max_iterations,
+    return DataOnlyPolicy(model_name=model_name, max_iterations=max_iterations,
                           n_samples=n_samples, **kwargs)
 
 

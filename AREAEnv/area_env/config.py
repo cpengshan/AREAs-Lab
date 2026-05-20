@@ -68,8 +68,8 @@ class AREAEnvConfig:
     max_tokens: int = 4096
 
     # File names (configurable so experiments can pin to a specific version)
-    synthesized_output_file: str = "synthesized_output_2.6.json"
-    data_sampled_file: str = "data_sampled_2.6.json"
+    synthesized_output_file: str = "synthesized_output.json"
+    data_sampled_file: str = "data_sampled.json"
 
     # Misc
     verbose: bool = False
@@ -89,6 +89,16 @@ class AREAEnvConfig:
             self.data_csv_path = os.path.join(
                 _DATA_RAW_ROOT, self.dataset_name, "sampled_data.csv"
             )
+
+    @property
+    def data_synthesized_root(self) -> str:
+        """Absolute path to the data_synthesized/ directory."""
+        return _DATA_SYNTHESIZED_ROOT
+
+    @property
+    def data_sampled_root(self) -> str:
+        """Absolute path to the data_sampled/ directory."""
+        return os.path.join(_AREA_ENV_ROOT, "data", "data_sampled")
 
     @property
     def effective_agent_temperature(self) -> float:

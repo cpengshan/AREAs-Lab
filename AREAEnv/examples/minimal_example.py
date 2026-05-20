@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Minimal AREAEnv example — demonstrates the env API without real LLM calls.
+Minimal AREAEnv example — demonstrates the gym-style env API without real LLM calls.
 
-Policies are external to AREAEnv. This example shows how to write a simple
-policy that interacts with the env through the standard reset/step interface.
+The agent interacts with the environment using only three identifiers:
+  dataset_name, persona_id, task_id.
+All dataset access is managed inside AREAEnv.
 
 Run from the AREAEnv directory:
     python3 examples/minimal_example.py
@@ -12,11 +13,11 @@ Run from the AREAEnv directory:
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from area_env.dataset.schema import PersonaInfo, TaskInstance
 from area_env.env.area_env import AREAEnv
 from area_env.env.actions import finish, propose_requirement_update, ask_user
 from area_env.users import MimicUser
 from area_env.evaluator.atomic_evaluator import AtomicEvaluator
+from area_env.dataset.loader import DatasetRegistry
 
 
 # ---------------------------------------------------------------------------
@@ -65,13 +66,11 @@ class StubUser(MimicUser):
 # ---------------------------------------------------------------------------
 
 class SimpleUserPolicy:
-    """Ask one question then finish. Demonstrates the env interaction loop."""
+    """Ask one question then finish. Demonstrates the gym-style interaction loop."""
 
-    def __init__(self, user):
-        self.user = user
-
-    def run(self, env, task):
-        obs, info = env.reset(task, self.user)
+    def run(self, env, dataset_name: str, persona_id, task_id: str) -> dict:
+        # Agent identifies the episode by three IDs only — no raw TaskInstance.
+        obs, info = env.reset(dataset_name, persona_id, task_id)
         print(f"  Task: {info['task_id']}")
         print(f"  User request: {obs['user_request']}")
 
@@ -95,29 +94,35 @@ class SimpleUserPolicy:
 
 
 # ---------------------------------------------------------------------------
-# Build task and run
+# Build env and run
 # ---------------------------------------------------------------------------
 
-persona = PersonaInfo(
-    persona_id=1, role="Data Analyst",
-    competency_matrix={"proficiencies": ["SQL"], "limitations": []},
-    business_motivation="Automate weekly reports.",
-    workflow_friction="Manual formatting.",
+# DatasetRegistry owns all synthesized data. Point it at your data directory.
+_DATA_SYNTHESIZED_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../data/data_synthesized")
 )
-task = TaskInstance(
-    task_id="demo_task_0", persona_id=1, persona_info=persona,
-    task_name="Weekly Report Summarizer",
-    task_requirement="### 1. Strategic Intent\nSummarize weekly sales data concisely...",
-    elevator_pitch="I need a tool that summarizes weekly sales reports automatically.",
-    deep_dive="Detailed description.", dataset_name="demo", data_csv_path="",
-)
+registry = DatasetRegistry(data_synthesized_root=_DATA_SYNTHESIZED_ROOT)
 
-env = AREAEnv(evaluator=StubEvaluator(), max_steps=10)
-policy = SimpleUserPolicy(user=StubUser())
+env = AREAEnv(
+    evaluator=StubEvaluator(),
+    user=StubUser(),
+    registry=registry,
+    max_steps=10,
+)
+policy = SimpleUserPolicy()
 
 print("=== AREAEnv Minimal Example ===\n")
-log = policy.run(env, task)
 
-print(f"\nTrajectory: {len(log['trajectory'])} steps")
-print(f"Eval scores: {log['eval_result']['scores']}")
-print(f"Log keys: {list(log.keys())}")
+# Agent provides only three identifiers — the env resolves everything internally.
+# Adjust dataset_name / persona_id / task_id to match your local data.
+DATASET = "alexfabbri/multi_news"
+PERSONA_ID = 1          # also accepts "user_1" or "persona_1"
+TASK_ID = "user_1_task_0"
+
+try:
+    log = policy.run(env, DATASET, PERSONA_ID, TASK_ID)
+    print(f"\nTrajectory: {len(log['trajectory'])} steps")
+    print(f"Eval scores: {log['eval_result']['scores']}")
+    print(f"Log keys: {list(log.keys())}")
+except KeyError as e:
+    print(f"\nTask not found ({e}). Adjust DATASET/PERSONA_ID/TASK_ID above.")

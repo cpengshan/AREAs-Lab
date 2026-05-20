@@ -1,4 +1,4 @@
 from .schema import PersonaInfo, TaskInstance
-from .loader import load_dataset
+from .loader import load_dataset, DatasetRegistry
 
-__all__ = ["PersonaInfo", "TaskInstance", "load_dataset"]
+__all__ = ["PersonaInfo", "TaskInstance", "load_dataset", "DatasetRegistry"]

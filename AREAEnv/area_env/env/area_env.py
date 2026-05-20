@@ -2,8 +2,13 @@
 AREAEnv — core gymnasium-style environment for AREA benchmark evaluation.
 
 Interface mirrors gym.Env without requiring the gymnasium package:
-  env.reset(task, user)  →  (observation, info)
-  env.step(action)       →  (observation, reward, done, info)
+  env.reset(dataset_name, persona_id, task_id)  →  (observation, info)
+  env.step(action)                               →  (observation, reward, done, info)
+
+The environment owns all dataset access. Agents interact using identifiers only:
+  dataset_name  — e.g. "alexfabbri/multi_news"
+  persona_id    — int, numeric string, "user_N", or "persona_N"
+  task_id       — e.g. "user_1_task_0"
 
 Action space (dict-based):
   ask_user(question)
@@ -19,13 +24,13 @@ import random
 from datetime import datetime, timezone
 from typing import Optional
 
-# Root of the AREAEnv package's data directory: AREAEnv/data/data_sampled/
+# Default root for sampled data: AREAEnv/data/data_sampled/
 _DATA_SAMPLED_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../data/data_sampled")
 )
 
 from .actions import VALID_SPLITS
-from ..dataset.schema import TaskInstance
+from ..dataset.loader import DatasetRegistry
 from ..users import MimicUser
 from ..evaluator.atomic_evaluator import AtomicEvaluator
 from .actions import (
@@ -41,41 +46,58 @@ logger = logging.getLogger(__name__)
 class AREAEnv:
     """Interactive benchmark environment for AI-Assisted User Needs Understanding.
 
+    The environment manages all dataset access. Agents identify episodes by
+    (dataset_name, persona_id, task_id) and never receive raw TaskInstance objects.
+
     Args:
-        evaluator: AtomicEvaluator instance used when the agent submits 'finish'.
-        max_steps: Maximum number of steps per episode before forced termination.
+        evaluator: AtomicEvaluator used when the agent submits 'finish'.
+        user: MimicUser that responds to ask_user actions.
+        registry: DatasetRegistry that resolves task identifiers to TaskInstances.
+        max_steps: Maximum steps per episode before forced termination.
+        data_sampled_root: Root directory for data_sampled files. Defaults to
+            AREAEnv/data/data_sampled/.
+        data_sampled_file: Filename within each dataset's data_sampled directory.
     """
 
     def __init__(
         self,
         evaluator: AtomicEvaluator,
+        user: MimicUser,
+        registry: DatasetRegistry,
         max_steps: int = 10,
-        data_sampled_file: str = "data_sampled_2.6.json",
+        data_sampled_root: Optional[str] = None,
+        data_sampled_file: str = "data_sampled.json",
     ):
         self.evaluator = evaluator
+        self.user = user
+        self.registry = registry
         self.max_steps = max_steps
+        self._data_sampled_root = data_sampled_root or _DATA_SAMPLED_ROOT
         self.data_sampled_file = data_sampled_file
         self._state: Optional[EpisodeState] = None
-        self._user: Optional[MimicUser] = None
         self._data: Optional[dict] = None  # {defining_instances: [...], non_defining_instances: [...]}
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def reset(self, task: TaskInstance, user: MimicUser) -> tuple[dict, dict]:
+    def reset(self, dataset_name: str, persona_id, task_id: str) -> tuple[dict, dict]:
         """Start a new episode.
 
+        The environment resolves the task internally; agents do not receive
+        the TaskInstance (which contains the ground-truth requirement).
+
         Args:
-            task: The TaskInstance to solve.
-            user: MimicUser instance (passive or persona-conditioned).
+            dataset_name: Dataset identifier, e.g. "alexfabbri/multi_news".
+            persona_id: Persona identifier — int, numeric str, "user_N", or "persona_N".
+            task_id: Task identifier string, e.g. "user_1_task_0".
 
         Returns:
-            (observation, info) where observation is a dict and info contains
-            task metadata.
+            (observation, info) where observation exposes only the underspecified
+            user request, and info contains episode metadata.
         """
+        task = self.registry.get_task(dataset_name, persona_id, task_id)
         self._state = EpisodeState(task=task)
-        self._user = user
         self._data = None
 
         obs = self._build_observation(last_response="")
@@ -83,7 +105,7 @@ class AREAEnv:
             "task_id": task.task_id,
             "dataset": task.dataset_name,
             "persona_id": task.persona_id,
-            "mode": "persona" if user.persona_config is not None else "passive",
+            "mode": "persona" if self.user.persona_config is not None else "passive",
         }
         return obs, info
 
@@ -165,8 +187,8 @@ class AREAEnv:
             "task_name": s.task.task_name,
             "dataset": s.task.dataset_name,
             "persona_id": s.task.persona_id,
-            "user_mode": "persona" if self._user and self._user.persona_config else "passive",
-            "persona_config": self._user.persona_config if self._user else None,
+            "user_mode": "persona" if self.user.persona_config else "passive",
+            "persona_config": self.user.persona_config,
             "n_steps": s.step_count,
             "total_cost": round(s.total_cost, 6),
             "conversation_history": s.interaction_history,
@@ -194,7 +216,7 @@ class AREAEnv:
         # Build chat history for the MIMIC user
         history = self._build_chat_history()
         asked_at = datetime.now(timezone.utc).isoformat()
-        user_result = self._user.respond(
+        user_result = self.user.respond(
             task=s.task,
             chat_history=history,
             agent_message=question,
@@ -231,7 +253,7 @@ class AREAEnv:
 
         if self._data is None:
             json_path = os.path.join(
-                _DATA_SAMPLED_ROOT, s.task.dataset_name, self.data_sampled_file
+                self._data_sampled_root, s.task.dataset_name, self.data_sampled_file
             )
             if not os.path.exists(json_path):
                 raise FileNotFoundError(

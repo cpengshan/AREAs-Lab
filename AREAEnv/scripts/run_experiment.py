@@ -48,7 +48,7 @@ from typing import Callable
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from area_env.config import AREAEnvConfig
-from area_env.dataset.loader import load_dataset
+from area_env.dataset.loader import load_dataset, DatasetRegistry
 from area_env.evaluator.atomic_evaluator import AtomicEvaluator
 from area_env.evaluator.metrics import aggregate_results
 from area_env.env.area_env import AREAEnv
@@ -66,20 +66,25 @@ def run_experiment(config: AREAEnvConfig, policy_factory: Callable) -> dict:
 
     Args:
         config: AREAEnvConfig specifying data, models, and output settings.
-        policy_factory: Callable(user) -> policy with run(env, task) -> dict.
+        policy_factory: Callable() -> policy with run(env, dataset_name, persona_id, task_id) -> dict.
 
     Returns:
         Dict with keys: config, n_tasks, n_successful, aggregate_scores,
         task_results, output_path.
     """
+    # Enumerate task identifiers — the env itself owns the actual data.
     tasks = load_dataset(
         synthesized_path=config.dataset_path,
-        data_csv_path=config.data_csv_path,
         dataset_name=config.dataset_name,
         task_ids=config.task_ids,
     )
-    logger.info(f"Loaded {len(tasks)} tasks")
+    task_ids = [(t.dataset_name, t.persona_id, t.task_id) for t in tasks]
+    logger.info(f"Found {len(task_ids)} tasks")
 
+    registry = DatasetRegistry(
+        data_synthesized_root=config.data_synthesized_root,
+        synthesized_output_file=config.synthesized_output_file,
+    )
     user = MimicUser(
         model_name=config.user_model,
         persona_config=config.persona_config if config.user_mode == "persona" else None,
@@ -87,28 +92,34 @@ def run_experiment(config: AREAEnvConfig, policy_factory: Callable) -> dict:
     )
     _cache_path = None
     if config.dataset_path:
-        import os as _os
-        _cache_path = _os.path.join(_os.path.dirname(config.dataset_path), "ground_truth_decompose.json")
+        _cache_path = os.path.join(os.path.dirname(config.dataset_path), "ground_truth_decompose.json")
     evaluator = AtomicEvaluator(
         model_name=config.evaluator_model,
         temperature=config.effective_evaluator_temperature,
         cache_gold_units=True,
         cache_path=_cache_path,
     )
-    env = AREAEnv(evaluator=evaluator, max_steps=config.max_steps)
+    env = AREAEnv(
+        evaluator=evaluator,
+        user=user,
+        registry=registry,
+        max_steps=config.max_steps,
+        data_sampled_root=config.data_sampled_root,
+        data_sampled_file=config.data_sampled_file,
+    )
 
     task_results = []
-    for i, task in enumerate(tasks):
-        logger.info(f"[{i+1}/{len(tasks)}] {task.task_id}")
-        policy = policy_factory(user)
+    for i, (dataset_name, persona_id, task_id) in enumerate(task_ids):
+        logger.info(f"[{i+1}/{len(task_ids)}] {task_id}")
+        policy = policy_factory()
         try:
-            log = policy.run(env, task)
+            log = policy.run(env, dataset_name, persona_id, task_id)
             task_results.append(log)
             f1 = log.get("eval_result", {}).get("scores", {}).get("f1", "N/A")
             logger.info(f"  → F1={f1}")
         except Exception as e:
-            logger.error(f"  Task {task.task_id} failed: {e}", exc_info=True)
-            task_results.append({"task_id": task.task_id, "error": str(e)})
+            logger.error(f"  Task {task_id} failed: {e}", exc_info=True)
+            task_results.append({"task_id": task_id, "error": str(e)})
 
     valid = [r for r in task_results if "eval_result" in r and r["eval_result"]]
     agg = aggregate_results([r["eval_result"] for r in valid])
@@ -163,20 +174,20 @@ def parse_args():
 
 
 def load_builtin_policy(name: str, args) -> Callable:
-    """Return a factory function for one of the example policies."""
+    """Return a zero-argument factory for one of the example policies."""
     from examples.policies import ZeroShotPolicy, UserOnlyPolicy, DataOnlyPolicy
 
     if name == "zero_shot":
-        def factory(user):
-            return ZeroShotPolicy(user, model_name=_cfg.agent_model,
+        def factory():
+            return ZeroShotPolicy(model_name=_cfg.agent_model,
                                   temperature=_cfg.temperature, max_tokens=_cfg.max_tokens)
     elif name == "user_only":
-        def factory(user):
-            return UserOnlyPolicy(user, model_name=_cfg.agent_model, max_turns=args.max_turns,
+        def factory():
+            return UserOnlyPolicy(model_name=_cfg.agent_model, max_turns=args.max_turns,
                                   temperature=_cfg.temperature, max_tokens=_cfg.max_tokens)
     elif name == "data_only":
-        def factory(user):
-            return DataOnlyPolicy(user, model_name=_cfg.agent_model,
+        def factory():
+            return DataOnlyPolicy(model_name=_cfg.agent_model,
                                   max_iterations=args.max_data_iterations,
                                   n_samples=args.n_data_samples,
                                   temperature=_cfg.temperature, max_tokens=_cfg.max_tokens)

@@ -1,8 +1,8 @@
-"""Dataset loader for AREA synthesized outputs."""
+"""Dataset loader and registry for AREA synthesized outputs."""
 
 import json
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from .schema import PersonaInfo, TaskInstance
 
@@ -105,3 +105,106 @@ def _validate_task_info(task_raw: dict, user_key: str) -> None:
             f"Task entry under '{user_key}' is missing fields: {missing}. "
             f"Task data: {list(task_raw.keys())}"
         )
+
+
+def list_personas(dataset_name: str, data_synthesized_dir: str) -> List[int]:
+    """Return sorted persona IDs for a dataset from its synthesized_output.json.
+
+    Args:
+        dataset_name: HuggingFace-style dataset id, e.g. 'alexfabbri/multi_news'.
+        data_synthesized_dir: Absolute path to the data_synthesized root directory.
+
+    Returns:
+        Sorted list of integer persona IDs.
+    """
+    path = os.path.join(data_synthesized_dir, dataset_name, "synthesized_output.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"synthesized_output.json not found: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return sorted(int(k.split("_")[1]) for k in data if k.startswith("user_"))
+
+
+def _normalize_persona_id(persona_id) -> Optional[int]:
+    """Normalize persona_id to int. Accepts int, numeric str, 'user_N', 'persona_N'."""
+    if persona_id is None:
+        return None
+    if isinstance(persona_id, int):
+        return persona_id
+    s = str(persona_id)
+    for prefix in ("user_", "persona_"):
+        if s.startswith(prefix):
+            try:
+                return int(s[len(prefix):])
+            except ValueError:
+                pass
+    try:
+        return int(s)
+    except ValueError:
+        return None  # cannot normalize; caller should skip persona_id check
+
+
+class DatasetRegistry:
+    """Manages loading and caching of AREA synthesized datasets.
+
+    The registry owns all dataset I/O; agents interact with the environment
+    using identifiers only (dataset_name, persona_id, task_id).
+
+    Args:
+        data_synthesized_root: Absolute path to the data_synthesized/ directory.
+        synthesized_output_file: Filename of the synthesized JSON inside each
+            dataset sub-directory (default: "synthesized_output.json").
+    """
+
+    def __init__(
+        self,
+        data_synthesized_root: str,
+        synthesized_output_file: str = "synthesized_output.json",
+    ):
+        self._root = os.path.abspath(data_synthesized_root)
+        self._output_file = synthesized_output_file
+        self._cache: Dict[str, List[TaskInstance]] = {}
+
+    def load(self, dataset_name: str) -> List[TaskInstance]:
+        """Load (and cache) all TaskInstances for a dataset."""
+        if dataset_name not in self._cache:
+            path = os.path.join(self._root, dataset_name, self._output_file)
+            self._cache[dataset_name] = load_dataset(path, dataset_name=dataset_name)
+        return self._cache[dataset_name]
+
+    def list_tasks(self, dataset_name: str) -> List[Tuple[str, int, str]]:
+        """Return (dataset_name, persona_id, task_id) for every task in the dataset."""
+        return [(t.dataset_name, t.persona_id, t.task_id) for t in self.load(dataset_name)]
+
+    def get_task(self, dataset_name: str, persona_id, task_id: str) -> TaskInstance:
+        """Retrieve a single TaskInstance by its three identifiers.
+
+        Args:
+            dataset_name: Dataset identifier, e.g. "alexfabbri/multi_news".
+            persona_id: Persona identifier — int, numeric string, "user_N", or "persona_N".
+            task_id: Exact task_id string, e.g. "user_1_task_0".
+
+        Raises:
+            KeyError: If no matching task is found.
+        """
+        tasks = self.load(dataset_name)
+        norm_pid = _normalize_persona_id(persona_id)
+        for t in tasks:
+            pid_match = (norm_pid is None) or (t.persona_id == norm_pid)
+            if pid_match and t.task_id == task_id:
+                return t
+        raise KeyError(
+            f"Task not found: dataset={dataset_name!r}, "
+            f"persona_id={persona_id!r}, task_id={task_id!r}"
+        )
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    # Usage: python -m AREAEnv.area_env.dataset.loader <dataset_name> <data_synthesized_dir>
+    if len(_sys.argv) != 3:
+        print("Usage: python -m AREAEnv.area_env.dataset.loader <dataset_name> <data_synthesized_dir>",
+              file=_sys.stderr)
+        _sys.exit(1)
+    ids = list_personas(_sys.argv[1], _sys.argv[2])
+    print(" ".join(str(i) for i in ids))

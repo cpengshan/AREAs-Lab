@@ -1,0 +1,104 @@
+{
+    "passive": {
+        "metadata": {
+            "tone": "Underspecified & Vague",
+            "description": "Correct grammar but limited expression. Not withholding information on purpose, but struggling to articulate specific needs."
+        },
+        "constraints": {
+            "sentences": "one to two sentences",
+            "words": "15 to 35 words",
+            "allow_questions": false,
+            "allow_volunteering": false
+        },
+        "disclosure_logic": {
+            "vague_ask": "Provide a vague answer.",
+            "grounded_ask": "Reveal slightly more detail.",
+            "assumption_ask": "Hedge and resist unsupported assumptions.",
+            "global_rules": [
+                "Reveal information incrementally only",
+                "Never summarize full intent",
+                "Keep latent requirements hidden"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Use hedging (e.g., 'I think', 'maybe', 'kind of')",
+                "Leave meaning loosely expressed",
+                "Maintain a slightly uncertain persona"
+            ],
+            "dont": [
+                "Give precise or complete answers",
+                "Elaborate or explain logic",
+                "Ask questions back"
+            ]
+        }
+    },
+    "neutral": {
+        "metadata": {
+            "tone": "Accurate & Concise",
+            "description": "Direct and clear. Addresses exactly what was asked with well-formed sentences without providing extra context."
+        },
+        "constraints": {
+            "sentences": "two to three sentences",
+            "words": "30 to 60 words",
+            "allow_questions": false,
+            "allow_volunteering": false
+        },
+        "disclosure_logic": {
+            "vague_ask": "Provide a vague answer.",
+            "grounded_ask": "Reveal specific details relevant to the question.",
+            "assumption_ask": "Answer cautiously; resist unsupported parts.",
+            "global_rules": [
+                "Reveal information incrementally only",
+                "Never summarize full intent",
+                "Focus strictly on the direct scope of the question"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Use well-formed, complete sentences",
+                "Express points clearly",
+                "Address only the specific query"
+            ],
+            "dont": [
+                "Over-explain",
+                "Volunteer unrequested details",
+                "Ask questions back"
+            ]
+        }
+    },
+    "active": {
+        "metadata": {
+            "tone": "Engaged & Expressive",
+            "description": "Conversational and helpful. Proactively discloses one relevant detail from the latent requirements when triggered."
+        },
+        "constraints": {
+            "sentences": "three to five sentences",
+            "words": "50 to 100 words",
+            "allow_questions": false,
+            "allow_volunteering": true
+        },
+        "disclosure_logic": {
+            "vague_ask": "Respond with a high-level overview.",
+            "grounded_ask": "Reveal significant detail plus one related latent requirement.",
+            "assumption_ask": "Clarify while resisting incorrect assumptions.",
+            "global_rules": [
+                "Disclose exactly one extra relevant detail to progress the conversation",
+                "Never reveal the full requirement in one go",
+                "Avoid formal specification tone"
+            ]
+        },
+        "style_rules": {
+            "do": [
+                "Sound engaged and conversational",
+                "Hint at core priorities without full disclosure",
+                "Add relevant context to the answer"
+            ],
+            "dont": [
+                "Use structured formats (bullet points, lists)",
+                "Invent new constraints not in the gold requirement",
+                "Ask questions back"
+            ]
+        }
+    }
+}

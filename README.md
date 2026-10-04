@@ -35,14 +35,13 @@ The benchmark is grounded in 16 publicly available Hugging Face datasets spannin
 
 ### Synthesis Pipeline
 
-Synthesis uses `gemini-3.1-pro-preview` (temperature 1.0), with `gpt-5` and `deepseek-v4-pro` for cross-model validation.
+The data synthesis pipeline consists of four stages:
+
 
 1. **Feature extraction.** Extract schema features from dataset metadata and semantic/structural patterns from 100 randomly sampled records per source.
 2. **Persona synthesis.** Generate five personas per source with diverse expertise, business goals, and dataset-specific challenges.
 3. **Task synthesis.** Generate two tasks per persona: **Medium** (interpretive reasoning) and **High** (complex or conflicting constraints). Each task includes a full requirement and a ~30-word informal summary.
 4. **Quality control.** Combine manual audits with independent scoring by both validation models across six dimensions. Discard instances with an average score below 4/5 or any critical dimension below 3/5. Filtering retains 151 tasks; human assessment of 16 retained instances (one per source) yields a mean score of 4.67/5.
-
-In `synthesized_output.json`, `task_requirement` contains the full requirement, hidden from the assistant and used for user simulation and evaluation. `elevator_pitch_summary` provides the user's initial request to the assistant.
 
 ### Data Sources
 

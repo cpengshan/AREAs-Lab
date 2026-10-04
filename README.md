@@ -162,34 +162,6 @@ python agent/run_agent.py \
 - `--communication_habit passive | neutral | active` sets the simulated user's style (`neutral` = Normal).
 - `--no_eval` skips the evaluator; `--exp_id <N>` resumes `Experiment<N>`.
 
-### Configuration
-
-Model and environment settings are read from the YAML file passed via `--config`; CLI flags override the corresponding YAML values. [`default.yaml`](AREAEnv/area_env/configs/default.yaml) ships with the simulated-user, evaluator, and data-file settings used in the paper but leaves the assistant model unset, so pass it with `--agent_model` or add the assistant fields below to your own YAML. The full settings used in the paper:
-
-```yaml
-# AREAs assistant
-agent_model: claude-sonnet-4-6          # also evaluated: gpt-5.4, gemini-3.1-pro-preview
-agent_model_temperature: 0.4
-
-# Simulated user
-user_model: gemini-3.1-pro-preview
-user_model_temperature: 0.7
-
-# Evaluator
-evaluator_model: gpt-5.4
-evaluator_model_temperature: 0.0
-
-# Episode limits
-max_steps: 15
-
-# Data file names (pin to a specific version)
-synthesized_output_file: synthesized_output.json
-data_sampled_file: data_sampled.json
-
-max_tokens: 12288
-verbose: false
-```
-
 ## Citation
 
 If you use AREAs-Lab, please cite:

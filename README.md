@@ -126,17 +126,52 @@ AREAEnv/data/
 ```
 
 
-### Example
+### Running the AREAs Assistant
 
-Run one environment episode end to end with a reference policy (no API key needed):
+[`agent/run_agent.py`](agent/run_agent.py) runs one elicitation strategy over every persona and task of a dataset, scores each submitted requirement with the evaluator, and saves the results. Run it from the repo root. The following command runs the **No Interaction** (zero-shot) strategy on `alexfabbri/multi_news` with Claude Sonnet as the assistant:
 
 ```bash
-python AREAEnv/examples/minimal_example.py
+python agent/run_agent.py \
+  --config AREAEnv/area_env/configs/default.yaml \
+  --strategy zero_shot \
+  --dataset alexfabbri/multi_news \
+  --agent_model claude-sonnet-4-6
 ```
+
+Results are written to `agent/results/<dataset>/<strategy>/Experiment<N>/`:
+
+- `output.json`: full trajectories, final requirements, and cost per task;
+- `eval_results.json`: atomic-unit Precision / Recall / F1 per task;
+- `run.log`: the run log.
+
+The four strategies map to the paper as follows:
+
+| `--strategy` | Paper | Extra flags |
+| --- | --- | --- |
+| `zero_shot` | No Interaction | — |
+| `data_interaction` | Data Interaction | `--split defining_instances \| non_defining_instances \| all` |
+| `user_interaction` | User Interaction (Adaptive) | `--communication_habit`, `--max_turns` |
+| `hybrid` | Hybrid Interaction | `--communication_habit`, `--max_iterations` |
+
+`--communication_habit` selects the simulated user's style (`passive` / `neutral` / `active`; `neutral` is the **Normal** style above) and is required for `user_interaction` and `hybrid`. For example, Hybrid Interaction with an active user:
+
+```bash
+python agent/run_agent.py \
+  --config AREAEnv/area_env/configs/default.yaml \
+  --strategy hybrid \
+  --dataset alexfabbri/multi_news \
+  --agent_model claude-sonnet-4-6 \
+  --communication_habit active \
+  --max_iterations 3
+```
+
+Other useful flags: `--persona 1 2` restricts the run to specific persona IDs (the `user_<N>` keys in `synthesized_output.json`; omit to run all personas), `--max_steps` caps the environment steps per episode, `--no_eval` skips the evaluator, and `--exp_id <N>` resumes `Experiment<N>` and skips tasks that are already done. Which API keys are needed depends on the models involved: the assistant (`--agent_model`), the simulated user (`user_model`, used by `user_interaction` and `hybrid`), and the evaluator (`evaluator_model`, unless `--no_eval`).
+
+The shell scripts in [`agent/scripts/`](agent/scripts/) run each strategy over all 16 datasets; set `REPO_ROOT` at the top of a script before running it.
 
 ### Configuration
 
-All model and environment settings come from a YAML file passed via `--config` (default: [`AREAEnv/area_env/configs/default.yaml`](AREAEnv/area_env/configs/default.yaml)). CLI flags override YAML values. The settings used in the paper:
+Model and environment settings are read from the YAML file passed via `--config`; CLI flags override the corresponding YAML values. [`default.yaml`](AREAEnv/area_env/configs/default.yaml) ships with the simulated-user, evaluator, and data-file settings used in the paper but leaves the assistant model unset, so pass it with `--agent_model` or add the assistant fields below to your own YAML. The full settings used in the paper:
 
 ```yaml
 # AREAs assistant

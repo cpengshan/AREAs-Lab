@@ -127,7 +127,7 @@ AREAEnv/data/
 
 ### Running the AREAs Assistant
 
-[`agent/run_agent.py`](agent/run_agent.py) runs one elicitation strategy on a dataset, scores each submitted requirement with the evaluator, and saves the results. Run it from the repo root. The following command runs the **No Interaction** (zero-shot) strategy on a single task of `ccdv/govreport-summarization` with Claude Sonnet as the assistant:
+Run [`agent/run_agent.py`](agent/run_agent.py) from the repo root. For example, **No Interaction** (zero-shot) on one task:
 
 ```bash
 python agent/run_agent.py \
@@ -138,24 +138,7 @@ python agent/run_agent.py \
   --agent_model claude-sonnet-4-6
 ```
 
-Task IDs have the form `user_<persona>_task_<k>`, where `<persona>` is a `user_<N>` key in `synthesized_output.json` and `<k>` is the 0-based task index (each persona has two tasks: `_task_0` and `_task_1`). Pass `--persona 1 2` instead to run every task of the given personas, or omit both flags to run the whole dataset.
-
-Results are written to `agent/results/<dataset>/<strategy>/Experiment<N>/`:
-
-- `output.json`: full trajectories, final requirements, and cost per task;
-- `eval_results.json`: atomic-unit Precision / Recall / F1 per task;
-- `run.log`: the run log.
-
-The four strategies map to the paper as follows:
-
-| `--strategy` | Paper | Extra flags |
-| --- | --- | --- |
-| `zero_shot` | No Interaction | — |
-| `data_interaction` | Data Interaction | `--split defining_instances \| non_defining_instances \| all` |
-| `user_interaction` | User Interaction (Adaptive) | `--communication_habit`, `--max_turns` |
-| `hybrid` | Hybrid Interaction | `--communication_habit`, `--max_iterations` |
-
-`--communication_habit` selects the simulated user's style (`passive` / `neutral` / `active`; `neutral` is the **Normal** style above) and is required for `user_interaction` and `hybrid`. For example, Hybrid Interaction with an active user:
+**Hybrid Interaction** with an active simulated user:
 
 ```bash
 python agent/run_agent.py \
@@ -168,9 +151,16 @@ python agent/run_agent.py \
   --max_iterations 3
 ```
 
-Other useful flags: `--max_steps` caps the environment steps per episode, `--no_eval` skips the evaluator, and `--exp_id <N>` resumes `Experiment<N>` and skips tasks that are already done. Which API keys are needed depends on the models involved: the assistant (`--agent_model`), the simulated user (`user_model`, used by `user_interaction` and `hybrid`), and the evaluator (`evaluator_model`, unless `--no_eval`).
+| `--strategy` | Paper | Extra flags |
+| --- | --- | --- |
+| `zero_shot` | No Interaction | — |
+| `data_interaction` | Data Interaction | `--split` |
+| `user_interaction` | User Interaction (Adaptive) | `--communication_habit`, `--max_turns` |
+| `hybrid` | Hybrid Interaction | `--communication_habit`, `--max_iterations` |
 
-The shell scripts in [`agent/scripts/`](agent/scripts/) run each strategy over all 16 datasets; set `REPO_ROOT` at the top of a script before running it.
+- `--task_id user_<N>_task_<k>` runs one task (`k` is 0 or 1); `--persona 1 2` runs all tasks of those personas; omit both to run the whole dataset.
+- `--communication_habit passive | neutral | active` sets the simulated user's style (`neutral` = Normal).
+- `--no_eval` skips the evaluator; `--exp_id <N>` resumes `Experiment<N>`.
 
 ### Configuration
 

@@ -110,6 +110,11 @@ def parse_args():
         help="Persona IDs to run (e.g. --persona 1 2 3). Omit to run all personas.",
     )
     parser.add_argument(
+        "--task_id",
+        type=str, nargs="*", default=None,
+        help="Task IDs to run (e.g. --task_id user_1_task_0). Omit to run all tasks of the selected personas.",
+    )
+    parser.add_argument(
         "--dataset",
         type=str, default=None,
         help="Dataset name under data/data_synthesized/ (overrides config)",
@@ -446,10 +451,12 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
         tasks = [t for t in all_tasks if t.persona_id in args.persona]
     else:
         tasks = list(all_tasks)
+    if args.task_id:
+        tasks = [t for t in tasks if t.task_id in args.task_id]
     tasks = sorted(tasks, key=lambda t: (t.persona_id, int(t.task_id.rsplit("_", 1)[-1])))
     if not tasks:
         raise ValueError(f"No tasks found for dataset '{cfg.dataset_name}' "
-                         f"(persona filter: {args.persona})")
+                         f"(persona filter: {args.persona}, task filter: {args.task_id})")
     persona_desc = str(args.persona) if args.persona else "all"
     logger.info(f"Running {len(tasks)} tasks for personas={persona_desc}")
 
@@ -503,6 +510,7 @@ def run_experiment(args: argparse.Namespace, cfg: "AREAEnvConfig", exp_dir: str)
                 "mimic_model": cfg.user_model,
                 "evaluator_model": cfg.evaluator_model,
                 "persona": args.persona,
+                "task_id": args.task_id,
                 "communication_habit": args.communication_habit,
                 "dataset": cfg.dataset_name,
                 "input_type": args.input_type,

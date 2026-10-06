@@ -62,6 +62,20 @@ _MAX_COMPLETION_TOKENS_MODELS = {"gpt-5.4", "gpt-5.4-mini", "gpt-5", "gpt-5-mini
 # OpenAI models that support the reasoning parameter
 _REASONING_MODELS = {"gpt-5.4", "gpt-5.4-mini"}
 
+# Anthropic models that still honour the `temperature` sampling parameter.
+# The anthropic SDK 1.x removed `temperature` from messages.create(), so it has
+# to be sent via `extra_body`. Opus 4.7+ returns 400 if the request carries it
+# at all, and Sonnet 5+ rejects non-default values, so it is only sent for the
+# models listed here and silently dropped for everything else.
+_ANTHROPIC_TEMPERATURE_MODELS = {
+    "claude-opus-4-6", "claude-4.6-opus",
+    "claude-sonnet-4-6",
+    "claude-opus-4-5",
+    "claude-sonnet-4-5",
+    "claude-haiku-4-5", "claude-haiku-4-5-20251001", "claude-4.5-haiku",
+}
+_anthropic_temperature_warned: set[str] = set()
+
 
 # ---------------------------------------------------------------------------
 # Provider implementations
@@ -162,6 +176,20 @@ def _anthropic_generate(model_name: str, prompt: str, **kwargs) -> dict:
 
     max_tokens = kwargs.pop("max_tokens", 1024)
     kwargs.pop("reasoning_effort", None)
+    temperature = kwargs.pop("temperature", None)
+
+    # `temperature` is no longer a named argument on messages.create() in
+    # anthropic SDK 1.x; pass it through extra_body (works on 0.x too).
+    if temperature is not None:
+        if model_name in _ANTHROPIC_TEMPERATURE_MODELS:
+            kwargs["extra_body"] = {**kwargs.get("extra_body", {}), "temperature": temperature}
+        elif model_name not in _anthropic_temperature_warned:
+            _anthropic_temperature_warned.add(model_name)
+            logger.warning(
+                f"Anthropic model '{model_name}' does not accept 'temperature'; "
+                f"ignoring temperature={temperature}"
+            )
+
     response = client.messages.create(
         model=model_name,
         max_tokens=max_tokens,
